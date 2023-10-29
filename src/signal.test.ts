@@ -46,6 +46,26 @@ test("Should __not__ update the computed signal when the selected dependency __d
 	expect(effect_cb).toHaveBeenCalledTimes(1);
 });
 
+test("State update across signals and computed signals should be atomic", () => {
+	const x = signal(1);
+	const y = compute(() => x.get() + 1);
+	let xy: { x: number, y: number } | undefined;
+
+	const effect_cb = jest.fn(() => {
+		xy = {
+			x: x.get(),
+			y: y().get(),
+		};
+	});
+	effect(effect_cb);
+	expect(xy).toMatchObject({ x: 1, y: 2});
+
+	x.set(2);
+	expect(xy).toMatchObject({ x: 2, y: 3});
+
+	expect(effect_cb).toBeCalledTimes(2);
+});
+
 test("Multiple read of the same signal should trigger update __only__ once", () => {
 	const x = signal(1);
 	let value: number | undefined;
