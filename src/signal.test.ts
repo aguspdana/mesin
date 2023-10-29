@@ -1,4 +1,4 @@
-import { signal, effect, compute, batch } from "./signal";
+import { signal, effect, compute, batch, stringify } from "./signal";
 
 test("Should update the computed signal when the selected dependency changes", () => {
 	const store_1 = signal({ a: 0, b: 10 });
@@ -153,4 +153,17 @@ test("Writing to the signal from the computed signal should trigger the effect _
 	expect(x_plus_1_cb).toHaveBeenCalledTimes(3);
 	expect(y_plus_1_cb).toHaveBeenCalledTimes(1);
 	expect(effect_cb).toHaveBeenCalledTimes(2);
+});
+
+test("stringify() should return stable result", () => {
+	expect(stringify(undefined)).toBe(undefined);
+	expect(stringify('"')).toBe('"\\""');
+	expect(stringify({ b: 1, a: 2 })).toBe('{"a":2,"b":1}');
+	expect(stringify({ b: undefined, a: 2 })).toBe('{"a":2}');
+	expect(stringify({ b: [3, 1, 2], a: 2 })).toBe('{"a":2,"b":[3,1,2]}');
+	expect(stringify([3, 1, 2])).toBe('[3,1,2]');
+	expect(stringify([undefined, 1])).toBe('[,1]');
+	expect(stringify([1, undefined])).toBe('[1,]');
+	expect(stringify([null, 1])).toBe('[null,1]');
+	expect(stringify([{b: 1, a: 2 }, 1])).toBe('[{"a":2,"b":1},1]');
 });

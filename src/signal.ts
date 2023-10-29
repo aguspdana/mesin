@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export type Param =
 	| void
+	| null
 	| string
 	| number
 	| boolean
@@ -318,8 +319,7 @@ export function compute<P extends Param, T>(cb: (param: P) => NotPromise<T>) {
 	const impl_map = new Map<string | number | symbol | boolean | undefined, ComputedImpl<P, T>>();
 
 	return function(param: P) {
-		// TODO: Use stable stringify.
-		const key = typeof param === 'object' && JSON.stringify(param);
+		const key = stringify(param);
 
 		function get_impl() {
 			const impl = impl_map.get(key);
@@ -390,4 +390,35 @@ export function useSignal<T>(signal: Signal<NotPromise<T>> | Computed<Param, Not
 	}, [signal])
 
 	return value;
+}
+
+/**
+ * Create a stable string from `Param`. Returns `undefined` if input is `undefined`.
+ * The returned string may not be parsed with `JSON.parse()` because `undefined` in
+ * an array is serialized into an empty string.  If an array has only one item
+ * that is `undefined`, it is serialized into an empty array.
+ */
+export function stringify(input: Param): string | undefined {
+	if (typeof input !== 'object' || input === null) {
+		return JSON.stringify(input);
+	}
+
+	if (Array.isArray(input)) {
+		const items = input.map((i) => stringify(i));
+		return `[${items.join(',')}]`
+	}
+
+	const keys = Object.keys(input).sort();
+	const props: string[] = [];
+
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
+		const value = input[key];
+		if (value !== undefined) {
+			const prop = `"${key}":${stringify(value)}`;
+			props.push(prop);
+		}
+	}
+
+	return `{${props.join(',')}}`;
 }
