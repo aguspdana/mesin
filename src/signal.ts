@@ -16,7 +16,7 @@ export type Selector<T, V> = (data: T) => V;
 export type ComputeFn<P extends Param, V> = (data: P) => NotPromise<V>;
 
 interface Context {
-	addDependency: (dependency: Dependency) => void;
+	add_dependency: (dependency: Dependency) => void;
 	update: () => void;
 }
 
@@ -28,7 +28,7 @@ interface Subscriber<T, V> {
 
 interface Dependency {
 	unsubscribe: () => void;
-	hasChanged: () => boolean;
+	changed: () => boolean;
 }
 
 type NotifyFn = () => void;
@@ -40,14 +40,14 @@ class Manager {
 	contexts: Context[] = [];
 	batch: Map<Signal<unknown>, UpdateFn> | null = null;
 
-	batchUpdate(cb: () => void) {
-		const hasParentBatch = !!this.batch;
-		if (!hasParentBatch) {
+	batch_update(cb: () => void) {
+		const parent_batch_exists = !!this.batch;
+		if (!parent_batch_exists) {
 			this.batch = new Map();
 		}
 		cb();
-		if (!hasParentBatch) {
-			this.runBatch();
+		if (!parent_batch_exists) {
+			this.run_batch();
 		}
 	}
 
@@ -55,7 +55,7 @@ class Manager {
 		this.contexts.push(context as Context);
 		const value = compute(param);
 		this.contexts.pop();
-		this.runBatch();
+		this.run_batch();
 		return value;
 	}
 
@@ -69,7 +69,7 @@ class Manager {
 	/**
 	 * Run batch update if there's no context.
 	 */
-	private runBatch() {
+	private run_batch() {
 		if (!this.batch || this.contexts.length !== 0) {
 			return;
 		}
@@ -99,7 +99,7 @@ class Manager {
 const MANAGER = new Manager();
 
 export function batch(cb: () => void) {
-	MANAGER.batchUpdate(cb);
+	MANAGER.batch_update(cb);
 }
 
 export class Signal<T> {
@@ -118,18 +118,18 @@ export class Signal<T> {
 		const value = selector(this.value);
 		const context = MANAGER.context();
 		if (context) {
-			const { addDependency, update } = context;
+			const { add_dependency, update } = context;
 			const key = Symbol();
 			const subscriber = { value, update, selector };
 			function unsubscribe(this: Signal<T>) {
 				this.subscribers.delete(key);
 			}
-			function hasChanged(this: Signal<T>) {
+			function changed(this: Signal<T>) {
 				return subscriber.selector(this.value) !== subscriber.value;
 			}
-			addDependency({
+			add_dependency({
 				unsubscribe: unsubscribe.bind(this),
-				hasChanged: hasChanged.bind(this),
+				changed: changed.bind(this),
 			});
 			this.subscribers.set(key, { value, update, selector });
 		}
@@ -144,8 +144,8 @@ export class Signal<T> {
 			this.value = value;
 			function notify(this: Signal<T>) {
 				this.subscribers.forEach((subscriber) => {
-					const newValue = subscriber.selector(value);
-					if (subscriber.value !== newValue) {
+					const new_value = subscriber.selector(value);
+					if (subscriber.value !== new_value) {
 						subscriber.update();
 					}
 				});
@@ -160,7 +160,7 @@ export function signal<T>(value: T) {
 	return new Signal(value);
 }
 
-class ComputeImpl<P extends Param, T> {
+class ComputedImpl<P extends Param, T> {
 	private param: P;
 	private computeFn: ComputeFn<P, T>;
 	private cache: {
@@ -170,7 +170,7 @@ class ComputeImpl<P extends Param, T> {
 	private dependencies: Dependency[] = [];
 	private subscribers = new Map<symbol, Subscriber<T, unknown>>();
 	private destroy: () => void;
-	private destroyTimeout: ReturnType<typeof setTimeout> | null = null;
+	private destroy_timeout: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(param: P, compute: ComputeFn<P, T>, destroy: () => void) {
 		this.param = param;
@@ -182,11 +182,11 @@ class ComputeImpl<P extends Param, T> {
 		this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
 		this.dependencies = [];
 
-		function addDependency(this: ComputeImpl<P, T>, dependency: Dependency) {
+		function add_dependency(this: ComputedImpl<P, T>, dependency: Dependency) {
 			this.dependencies.push(dependency);
 		}
 
-		function update(this: ComputeImpl<P, T>) {
+		function update(this: ComputedImpl<P, T>) {
 			if (this.cache?.clock !== MANAGER.clock) {
 				if (this.subscribers.size === 0) {
 					this.cache = null;
@@ -200,7 +200,7 @@ class ComputeImpl<P extends Param, T> {
 			this.param,
 			this.computeFn,
 			{
-				addDependency: addDependency.bind(this),
+				add_dependency: add_dependency.bind(this),
 				update: update.bind(this),
 			},
 		);
@@ -224,11 +224,11 @@ class ComputeImpl<P extends Param, T> {
 		return this.select((v) => v);
 	}
 
-	private getCacheOrCompute() {
+	private get_cache_or_compute() {
 		if (this.cache) {
 			if (this.cache.clock === MANAGER.clock) {
 				return this.cache;
-			} else if (!this.dependencies.some(({ hasChanged }) => hasChanged())){
+			} else if (!this.dependencies.some(({ changed }) => changed())){
 				this.cache.clock = MANAGER.clock;
 				return this.cache;
 			} else {
@@ -239,18 +239,18 @@ class ComputeImpl<P extends Param, T> {
 		}
 	}
 
-	private maybeDestroy() {
-		if (this.destroyTimeout !== null) {
-			clearTimeout(this.destroyTimeout);
+	private maybe_destroy() {
+		if (this.destroy_timeout !== null) {
+			clearTimeout(this.destroy_timeout);
 		}
 
 		if (this.subscribers.size !== 0) {
-			this.destroyTimeout = null;
+			this.destroy_timeout = null;
 			return;
 		}
 
-		this.destroyTimeout = setTimeout(() => {
-			this.destroyTimeout = null;
+		this.destroy_timeout = setTimeout(() => {
+			this.destroy_timeout = null;
 			if (this.subscribers.size !== 0) {
 				return;
 			}
@@ -260,34 +260,37 @@ class ComputeImpl<P extends Param, T> {
 	}
 
 	select<V>(selector: Selector<T, V>): V {
-		const { value } = this.getCacheOrCompute();
+		const { value } = this.get_cache_or_compute();
 		const selected = selector(value);
-		this.subscribeContext(selected, selector);
-		this.maybeDestroy();
+		this.subscribe_context(selected, selector);
+		this.maybe_destroy();
 		return selected;
 	}
 
-	private subscribeContext<V>(value: V, selector: Selector<T, V>) {
+	/**
+	 * Add the context as a subscriber and add the current signal as a dependency of the context.
+	 */
+	private subscribe_context<V>(value: V, selector: Selector<T, V>) {
 		const context = MANAGER.context();
 
 		if (context) {
-			const { addDependency, update } = context;
+			const { add_dependency, update } = context;
 			const key = Symbol(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 			const subscriber = { value, update, selector };
 
-			function unsubscribe(this: ComputeImpl<P, T>) {
+			function unsubscribe(this: ComputedImpl<P, T>) {
 				this.subscribers.delete(key);
-				this.maybeDestroy();
+				this.maybe_destroy();
 			}
 
-			function hasChanged(this: ComputeImpl<P, T>): boolean {
-				const { value } = this.getCacheOrCompute();
+			function changed(this: ComputedImpl<P, T>): boolean {
+				const { value } = this.get_cache_or_compute();
 				return subscriber.value !== selector(value);
 			}
 
-			addDependency({
+			add_dependency({
 				unsubscribe: unsubscribe.bind(this),
-				hasChanged: hasChanged.bind(this),
+				changed: changed.bind(this),
 			});
 
 			this.subscribers.set(key, subscriber);
@@ -295,43 +298,43 @@ class ComputeImpl<P extends Param, T> {
 	}
 }
 
-class Compute<P extends Param, T> {
-	private getImpl: () => ComputeImpl<P, T>;
+class Computed<P extends Param, T> {
+	private get_impl: () => ComputedImpl<P, T>;
 
-	constructor(getImpl: () => ComputeImpl<P, T>) {
-		this.getImpl = getImpl;
+	constructor(get_impl: () => ComputedImpl<P, T>) {
+		this.get_impl = get_impl;
 	}
 
 	get(): T {
-		return this.getImpl().get();
+		return this.get_impl().get();
 	}
 
 	select<V>(selector: Selector<T, V>): V {
-		return this.getImpl().select(selector);
+		return this.get_impl().select(selector);
 	}
 }
 
 export function compute<P extends Param, T>(cb: (param: P) => NotPromise<T>) {
-	const implMap = new Map<string | number | symbol | boolean | undefined, ComputeImpl<P, T>>();
+	const impl_map = new Map<string | number | symbol | boolean | undefined, ComputedImpl<P, T>>();
 
 	return function(param: P) {
 		// TODO: Use stable stringify.
 		const key = typeof param === 'object' && JSON.stringify(param);
 
-		function getImpl() {
-			const impl = implMap.get(key);
+		function get_impl() {
+			const impl = impl_map.get(key);
 			if (impl) {
 				return impl;
 			}
 			function destroy() {
-				implMap.delete(key);
+				impl_map.delete(key);
 			}
-			const newImpl = new ComputeImpl(param, cb, destroy);
-			implMap.set(key, newImpl);
-			return newImpl;
+			const new_impl = new ComputedImpl(param, cb, destroy);
+			impl_map.set(key, new_impl);
+			return new_impl;
 		}
 
-		return new Compute(getImpl);
+		return new Computed(get_impl);
 	}
 }
 
@@ -339,7 +342,7 @@ export function effect(cb: () => void) {
 	let dependencies: Dependency[] = [];
 	let clock = -1;
 
-	function addDependency(dependency: Dependency) {
+	function add_dependency(dependency: Dependency) {
 		dependencies.push(dependency);
 	}
 
@@ -353,7 +356,7 @@ export function effect(cb: () => void) {
 		const value = MANAGER.compute(
 			undefined,
 			cb,
-			{ addDependency, update },
+			{ add_dependency, update },
 		);
 		return value;
 	}
@@ -367,21 +370,21 @@ export function effect(cb: () => void) {
 	return dispose;
 }
 
-export function useSignal<T>(signal: Signal<NotPromise<T>> | Compute<Param, NotPromise<T>>) {
+export function useSignal<T>(signal: Signal<NotPromise<T>> | Computed<Param, NotPromise<T>>) {
 	const [value, setValue] = useState<NotPromise<T>>(signal.get());
-	const shouldUpdateRef = useRef(false);
+	const should_update = useRef(false);
 
 	useEffect(() => {
-		shouldUpdateRef.current = false;
+		should_update.current = false;
 
 		const dispose = effect(() => {
 			const newValue = signal.get();
-			if (shouldUpdateRef.current) {
+			if (should_update.current) {
 				setValue(newValue);
 			}
 		});
 
-		shouldUpdateRef.current = true;
+		should_update.current = true;
 
 		return () => dispose();
 	}, [signal])
