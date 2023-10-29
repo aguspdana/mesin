@@ -162,8 +162,9 @@ test("stringify() should return stable result", () => {
 	expect(stringify({ b: undefined, a: 2 })).toBe('{"a":2}');
 	expect(stringify({ b: [3, 1, 2], a: 2 })).toBe('{"a":2,"b":[3,1,2]}');
 	expect(stringify([3, 1, 2])).toBe('[3,1,2]');
+	expect(stringify([null, 1])).toBe('[null,1]');
 	expect(stringify([undefined, 1])).toBe('[,1]');
 	expect(stringify([1, undefined])).toBe('[1,]');
-	expect(stringify([null, 1])).toBe('[null,1]');
+	expect(stringify([undefined])).toBe('[]');
 	expect(stringify([{b: 1, a: 2 }, 1])).toBe('[{"a":2,"b":1},1]');
 });
