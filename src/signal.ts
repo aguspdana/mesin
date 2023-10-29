@@ -335,32 +335,36 @@ export function compute<P extends Param, T>(cb: (param: P) => NotPromise<T>) {
 	}
 }
 
-export function subscribe<T>(signal: Signal<NotPromise<T>> | Compute<Param, NotPromise<T>>, cb: (value: NotPromise<T>) => void) {
+export function effect(cb: () => void) {
 	let dependencies: Dependency[] = [];
+	let clock = -1;
 
 	function addDependency(dependency: Dependency) {
 		dependencies.push(dependency);
 	}
 
 	function update() {
+		if (clock === MANAGER.clock) {
+			return;
+		}
+		clock = MANAGER.clock;
 		dependencies.forEach(({ unsubscribe }) => unsubscribe());
 		dependencies = [];
 		const value = MANAGER.compute(
 			undefined,
-			() => signal.get(),
+			cb,
 			{ addDependency, update },
 		);
-		cb(value);
 		return value;
 	}
 
-	function unsubscribe() {
+	function dispose() {
 		dependencies.forEach((d) => d.unsubscribe());
 	}
 
 	update();
 
-	return unsubscribe;
+	return dispose;
 }
 
 export function useSignal<T>(signal: Signal<NotPromise<T>> | Compute<Param, NotPromise<T>>) {
@@ -370,7 +374,8 @@ export function useSignal<T>(signal: Signal<NotPromise<T>> | Compute<Param, NotP
 	useEffect(() => {
 		shouldUpdateRef.current = false;
 
-		const unsubscribe = subscribe(signal, (newValue) => {
+		const dispose = effect(() => {
+			const newValue = signal.get();
 			if (shouldUpdateRef.current) {
 				setValue(newValue);
 			}
@@ -378,7 +383,7 @@ export function useSignal<T>(signal: Signal<NotPromise<T>> | Compute<Param, NotP
 
 		shouldUpdateRef.current = true;
 
-		return () => unsubscribe();
+		return () => dispose();
 	}, [signal])
 
 	return value;
