@@ -393,12 +393,14 @@ export function useSignal<T>(signal: Signal<NotPromise<T>> | Computed<Param, Not
 }
 
 /**
- * Create a stable string from `Param`. Returns `undefined` if input is `undefined`.
- * The returned string may not be parsed with `JSON.parse()` because `undefined` in
- * an array is serialized into an empty string.  If an array has only one item
- * that is `undefined`, it is serialized into an empty array.
+ * Create a stable string from `Param`.  The returned string may not be parsed
+ * with `JSON.parse()`.
  */
-export function stringify(input: Param): string | undefined {
+export function stringify(input: Param): string {
+	if (input === undefined) {
+		return '_';
+	}
+
 	if (typeof input !== 'object' || input === null) {
 		return JSON.stringify(input);
 	}
