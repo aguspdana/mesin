@@ -1,72 +1,85 @@
 import { useEffect } from 'react';
 import './App.css'
-import { batch, compute, signal, useSignal } from './signal';
+import { batch, compute, store, useStore } from './mesin';
 
-const storeSignal = signal({ a: 0, b: 100 });
-const otherSignal = signal({ c: 1000 });
+const primary = store({ a: 0, b: 100 });
+const secondary = store({ c: 1000 });
 
-const aPlusOneSignal = compute(() => {
-	console.log('App/aPlusOneSignal');
-	const count = storeSignal.select((s) => s.a);
-	return count + 1;
+const a_plus_1 = compute(() => {
+	console.log('App/a_plus_1');
+	const a = primary.select((s) => s.a);
+	return a + 1;
 });
 
-const aPlusBPlusOneSignal = compute(() => {
-	console.log('App/aPlusBPlusOneSignal');
-	const aPlusOne = aPlusOneSignal().get();
-	const b = storeSignal.select((s) => s.b);
-	return aPlusOne + b;
+const a_plus_b_plus_1 = compute(() => {
+	console.log('App/a_plus_b_plus_1');
+	const a_plus_1_value = a_plus_1().get();
+	const b = primary.select((s) => s.b);
+	return a_plus_1_value + b;
 });
 
-const cPlusOneSignal = compute(() => {
-	console.log('App/cPlusOneSignal');
-	const count = otherSignal.select((s) => s.c);
-	if (count % 2 !== 0) {
-		otherSignal.set({ c: count + 1 });
+const c_plus_1 = compute(() => {
+	console.log('App/c_plus_1');
+	const c = secondary.select((s) => s.c);
+	if (c % 2 !== 0) {
+		secondary.set({ c: c + 1 });
 	}
-	return count + 1;
+	return c + 1;
 });
 
-function incrementA() {
-	const store = storeSignal.get();
-	storeSignal.set({ ...store, a: store.a + 1 });
+function increment_a() {
+	const store = primary.get();
+	primary.set({ ...store, a: store.a + 1 });
 }
 
-function incrementB() {
-	const store = storeSignal.get();
-	storeSignal.set({ ...store, b: store.b + 1 });
+function increment_b() {
+	const store = primary.get();
+	primary.set({ ...store, b: store.b + 1 });
 }
 
-function incrementC() {
-	const other = otherSignal.get();
-	otherSignal.set({ ...other, c: other.c + 1 });
+function increment_c() {
+	const secondary_value = secondary.get();
+	secondary.set({ ...secondary_value, c: secondary_value.c + 1 });
 }
 
-function incrementBC() {
+function increment_bc() {
 	batch(() => {
-		const store = storeSignal.get();
-		const other = otherSignal.get();
-		storeSignal.set({ ...store, b: store.b + 1 });
-		otherSignal.set({ c: other.c + 1 });
+		const primary_value = primary.get();
+		const secondary_value = secondary.get();
+		primary.set({ ...primary_value, b: primary_value.b + 1 });
+		secondary.set({ c: secondary_value.c + 1 });
 	});
 }
 
 function App() {
-	const aPlusOne = useSignal(aPlusOneSignal());
-	const aPlusBPlusOne = useSignal(aPlusBPlusOneSignal());
-	const cPlusOne = useSignal(cPlusOneSignal());
+	const a_plus_1_value = useStore(a_plus_1());
+	const a_plus_b_plus_1_value = useStore(a_plus_b_plus_1());
+	const c_plus_1_value = useStore(c_plus_1());
 
-	useEffect(() => console.log(aPlusOne, aPlusBPlusOne, cPlusOne), [aPlusOne, aPlusBPlusOne, cPlusOne]);
+	useEffect(
+		() => {
+			console.log(
+				a_plus_1_value,
+				a_plus_b_plus_1_value,
+				c_plus_1_value
+			);
+		},
+		[
+			a_plus_1_value,
+			a_plus_b_plus_1_value,
+			c_plus_1_value
+		]
+	);
 
 	return (
 		<>
-			<button onClick={incrementA}>Increment A</button>
-			<button onClick={incrementB}>Increment B</button>
-			<button onClick={incrementC}>Increment C</button>
-			<button onClick={incrementBC}>Increment B & C</button>
-			<p>A + 1 = {aPlusOne}</p>
-			<p>A + 1 + B = {aPlusBPlusOne}</p>
-			<p>C + 1 = {cPlusOne}</p>
+			<button onClick={increment_a}>Increment A</button>
+			<button onClick={increment_b}>Increment B</button>
+			<button onClick={increment_c}>Increment C</button>
+			<button onClick={increment_bc}>Increment B & C</button>
+			<p>A + 1 = {a_plus_1_value}</p>
+			<p>A + 1 + B = {a_plus_b_plus_1_value}</p>
+			<p>C + 1 = {c_plus_1_value}</p>
 		</>
 	)
 }

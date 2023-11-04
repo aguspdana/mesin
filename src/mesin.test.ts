@@ -1,8 +1,8 @@
 import { expect, test, vi } from 'vitest';
-import { signal, effect, compute, batch, stringify } from "./signal";
+import { store, effect, compute, batch, stringify } from "./mesin";
 
 test("Should update the computed signal when the selected dependency changes", () => {
-	const store_1 = signal({ a: 0, b: 10 });
+	const store_1 = store({ a: 0, b: 10 });
 
 	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
 		return store_1.select((v) => v[key]) + 1;
@@ -25,7 +25,7 @@ test("Should update the computed signal when the selected dependency changes", (
 });
 
 test("Should __not__ update the computed signal when the selected dependency __doesn't__ change", () => {
-	const store_1 = signal({ a: 0, b: 10 });
+	const store_1 = store({ a: 0, b: 10 });
 
 	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
 		return store_1.select((v) => v[key]) + 1;
@@ -48,7 +48,7 @@ test("Should __not__ update the computed signal when the selected dependency __d
 });
 
 test("State update across signals and computed signals should be atomic", () => {
-	const x = signal(1);
+	const x = store(1);
 	const y = compute(() => x.get() + 1);
 	let xy: { x: number, y: number } | undefined;
 
@@ -68,7 +68,7 @@ test("State update across signals and computed signals should be atomic", () => 
 });
 
 test("Multiple read of the same signal should trigger update __only__ once", () => {
-	const x = signal(1);
+	const x = store(1);
 	let value: number | undefined;
 
 	const effect_cb = vi.fn(() => {
@@ -84,8 +84,8 @@ test("Multiple read of the same signal should trigger update __only__ once", () 
 });
 
 test("Batch update should trigger the effect __only__ once", () => {
-	const x = signal(0);
-	const y = signal(10);
+	const x = store(0);
+	const y = store(10);
 
 	const x_plus_1_cb = vi.fn(() => {
 		return x.select((v) => v) + 1;
@@ -125,8 +125,8 @@ test("Batch update should trigger the effect __only__ once", () => {
 });
 
 test("Writing to the signal from the computed signal should trigger the effect __only__ once", () => {
-	const x = signal(0);
-	const y = signal(10);
+	const x = store(0);
+	const y = store(10);
 
 	const x_plus_1_cb = vi.fn(() => {
 		const _x = x.get();

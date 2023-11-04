@@ -39,7 +39,7 @@ type UpdateFn = () => NotifyFn;
 class Manager {
 	clock = 0;
 	contexts: Context[] = [];
-	batch: Map<Signal<unknown>, UpdateFn> | null = null;
+	batch: Map<Store<unknown>, UpdateFn> | null = null;
 
 	batch_update(cb: () => void) {
 		const parent_batch_exists = !!this.batch;
@@ -84,12 +84,12 @@ class Manager {
 		batch.map((update) => update()).forEach((notify) => notify());
 	}
 
-	update(signal: Signal<unknown>, update: UpdateFn) {
+	update(store: Store<unknown>, update: UpdateFn) {
 		if (this.batch) {
-			this.batch.set(signal, update);
+			this.batch.set(store, update);
 		} else if (this.contexts.length !== 0) {
 			this.batch = new Map();
-			this.batch.set(signal, update);
+			this.batch.set(store, update);
 		} else {
 			this.clock += 1;
 			update()();
@@ -103,7 +103,7 @@ export function batch(cb: () => void) {
 	MANAGER.batch_update(cb);
 }
 
-export class Signal<T> {
+export class Store<T> {
 	private value: T;
 	private subscribers = new Map<symbol, Subscriber<T, unknown>>();
 
@@ -122,10 +122,10 @@ export class Signal<T> {
 			const { add_dependency, update } = context;
 			const key = Symbol();
 			const subscriber = { value, update, selector };
-			function unsubscribe(this: Signal<T>) {
+			function unsubscribe(this: Store<T>) {
 				this.subscribers.delete(key);
 			}
-			function changed(this: Signal<T>) {
+			function changed(this: Store<T>) {
 				return subscriber.selector(this.value) !== subscriber.value;
 			}
 			add_dependency({
@@ -141,9 +141,9 @@ export class Signal<T> {
 		if (value === this.value) {
 			return;
 		}
-		function update(this: Signal<T>) {
+		function update(this: Store<T>) {
 			this.value = value;
-			function notify(this: Signal<T>) {
+			function notify(this: Store<T>) {
 				this.subscribers.forEach((subscriber) => {
 					const new_value = subscriber.selector(value);
 					if (subscriber.value !== new_value) {
@@ -153,12 +153,12 @@ export class Signal<T> {
 			}
 			return notify.bind(this);
 		}
-		MANAGER.update(this as Signal<unknown>, update.bind(this));
+		MANAGER.update(this as Store<unknown>, update.bind(this));
 	}
 }
 
-export function signal<T>(value: T) {
-	return new Signal(value);
+export function store<T>(value: T) {
+	return new Store(value);
 }
 
 class ComputedImpl<P extends Param, T> {
@@ -269,7 +269,7 @@ class ComputedImpl<P extends Param, T> {
 	}
 
 	/**
-	 * Add the context as a subscriber and add the current signal as a dependency of the context.
+	 * Add the context as a subscriber and add the current computed store as a dependency of the context.
 	 */
 	private subscribe_context<V>(value: V, selector: Selector<T, V>) {
 		const context = MANAGER.context();
@@ -370,15 +370,15 @@ export function effect(cb: () => void) {
 	return dispose;
 }
 
-export function useSignal<T>(signal: Signal<NotPromise<T>> | Computed<Param, NotPromise<T>>) {
-	const [value, setValue] = useState<NotPromise<T>>(signal.get());
+export function useStore<T>(store: Store<NotPromise<T>> | Computed<Param, NotPromise<T>>) {
+	const [value, setValue] = useState<NotPromise<T>>(store.get());
 	const should_update = useRef(false);
 
 	useEffect(() => {
 		should_update.current = false;
 
 		const dispose = effect(() => {
-			const newValue = signal.get();
+			const newValue = store.get();
 			if (should_update.current) {
 				setValue(newValue);
 			}
@@ -387,7 +387,7 @@ export function useSignal<T>(signal: Signal<NotPromise<T>> | Computed<Param, Not
 		should_update.current = true;
 
 		return () => dispose();
-	}, [signal])
+	}, [store])
 
 	return value;
 }
