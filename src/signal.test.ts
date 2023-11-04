@@ -1,16 +1,17 @@
+import { expect, test, vi } from 'vitest';
 import { signal, effect, compute, batch, stringify } from "./signal";
 
 test("Should update the computed signal when the selected dependency changes", () => {
 	const store_1 = signal({ a: 0, b: 10 });
 
-	const x_plus_1_cb = jest.fn(({ key }: { key: 'a' | 'b' }) => {
+	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
 		return store_1.select((v) => v[key]) + 1;
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
 
 	let value: number | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		value = x_plus_1({ key: 'a' }).get();
 	});
 	effect(() => effect_cb());
@@ -26,14 +27,14 @@ test("Should update the computed signal when the selected dependency changes", (
 test("Should __not__ update the computed signal when the selected dependency __doesn't__ change", () => {
 	const store_1 = signal({ a: 0, b: 10 });
 
-	const x_plus_1_cb = jest.fn(({ key }: { key: 'a' | 'b' }) => {
+	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
 		return store_1.select((v) => v[key]) + 1;
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
 
 	let value: number | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		value = x_plus_1({ key: 'a' }).get();
 	});
 	effect(effect_cb);
@@ -51,7 +52,7 @@ test("State update across signals and computed signals should be atomic", () => 
 	const y = compute(() => x.get() + 1);
 	let xy: { x: number, y: number } | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		xy = {
 			x: x.get(),
 			y: y().get(),
@@ -70,7 +71,7 @@ test("Multiple read of the same signal should trigger update __only__ once", () 
 	const x = signal(1);
 	let value: number | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		value = x.get() + x.get();
 	});
 	effect(() => effect_cb());
@@ -86,12 +87,12 @@ test("Batch update should trigger the effect __only__ once", () => {
 	const x = signal(0);
 	const y = signal(10);
 
-	const x_plus_1_cb = jest.fn(() => {
+	const x_plus_1_cb = vi.fn(() => {
 		return x.select((v) => v) + 1;
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
 
-	const y_plus_1_cb = jest.fn(() => {
+	const y_plus_1_cb = vi.fn(() => {
 		return y.select((v) => v) + 1;
 	});
 	const y_plus_1 = compute(y_plus_1_cb);
@@ -104,7 +105,7 @@ test("Batch update should trigger the effect __only__ once", () => {
 
 	let value: number | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		value = x_plus_1_plus_y_plus_1({ key: 'a' }).get();
 	});
 	effect(effect_cb);
@@ -127,7 +128,7 @@ test("Writing to the signal from the computed signal should trigger the effect _
 	const x = signal(0);
 	const y = signal(10);
 
-	const x_plus_1_cb = jest.fn(() => {
+	const x_plus_1_cb = vi.fn(() => {
 		const _x = x.get();
 		if (_x % 2 != 0) {
 			x.set(_x + 1);
@@ -136,12 +137,12 @@ test("Writing to the signal from the computed signal should trigger the effect _
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
 
-	const y_plus_1_cb = jest.fn(() => y.get() + 1);
+	const y_plus_1_cb = vi.fn(() => y.get() + 1);
 	const y_plus_1 = compute(y_plus_1_cb);
 
 	let value: number | undefined;
 
-	const effect_cb = jest.fn(() => {
+	const effect_cb = vi.fn(() => {
 		value = x_plus_1().get() + y_plus_1().get();
 	});
 	effect(() => effect_cb());
