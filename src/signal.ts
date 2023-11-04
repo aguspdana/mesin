@@ -416,8 +416,10 @@ export function stringify(input: Param): string {
 	for (let i = 0; i < keys.length; i++) {
 		const key = keys[i];
 		const value = input[key];
+		const stable_key = JSON.stringify(key);
+		const stable_value = stringify(value);
 		if (value !== undefined) {
-			const prop = `"${key}":${stringify(value)}`;
+			const prop = `${stable_key}:${stable_value}`;
 			props.push(prop);
 		}
 	}
