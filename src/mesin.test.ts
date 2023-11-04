@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
-import { store, effect, compute, batch, stringify } from "./mesin";
+import { store, effect, compute, batch, stringify, query, QueryState } from "./mesin";
 
-test("Should update the computed signal when the selected dependency changes", () => {
+test("Should update the computed store when the selected dependency changes", () => {
 	const store_1 = store({ a: 0, b: 10 });
 
 	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
@@ -24,7 +24,7 @@ test("Should update the computed signal when the selected dependency changes", (
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 });
 
-test("Should __not__ update the computed signal when the selected dependency __doesn't__ change", () => {
+test("Should __not__ update the computed store when the selected dependency __doesn't__ change", () => {
 	const store_1 = store({ a: 0, b: 10 });
 
 	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
@@ -47,7 +47,7 @@ test("Should __not__ update the computed signal when the selected dependency __d
 	expect(effect_cb).toHaveBeenCalledTimes(1);
 });
 
-test("State update across signals and computed signals should be atomic", () => {
+test("State update across stores and computed stores should be atomic", () => {
 	const x = store(1);
 	const y = compute(() => x.get() + 1);
 	let xy: { x: number, y: number } | undefined;
@@ -67,7 +67,7 @@ test("State update across signals and computed signals should be atomic", () => 
 	expect(effect_cb).toBeCalledTimes(2);
 });
 
-test("Multiple read of the same signal should trigger update __only__ once", () => {
+test("Multiple read of the same store should trigger update __only__ once", () => {
 	const x = store(1);
 	let value: number | undefined;
 
@@ -124,7 +124,7 @@ test("Batch update should trigger the effect __only__ once", () => {
 	expect(y_plus_1_cb).toHaveBeenCalledTimes(2);
 });
 
-test("Writing to the signal from the computed signal should trigger the effect __only__ once", () => {
+test("Writing to the store from the computed tore should trigger the effect __only__ once", () => {
 	const x = store(0);
 	const y = store(10);
 
@@ -155,6 +155,138 @@ test("Writing to the signal from the computed signal should trigger the effect _
 	expect(y_plus_1_cb).toHaveBeenCalledTimes(1);
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 });
+
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+test('Query state should be in "finished" state after the initial fetch resolved', async() => {
+	const count = query(
+		async () => {
+			await sleep(10);
+			return 1;
+		},
+		{
+			update_every: 10,
+			destroy_after: 10,
+		}
+	);
+
+	let state: QueryState<number> | null = null;
+	const effect_cb = vi.fn(() => {
+		state = count().get();
+	});
+	effect(effect_cb);
+	expect(state).toMatchObject({ state: 'pending' });
+
+	await sleep(20);
+	expect(state).toMatchObject({ state: 'finished', value: 1 });
+
+	expect(effect_cb).toHaveBeenCalledTimes(2);
+});
+
+test('Query should be in "error" state after the fetcher throws an error', async () => {
+	const count = query(
+		async () => {
+			await sleep(10);
+			throw 'Ops';
+		},
+		{
+			update_every: 10,
+			destroy_after: 10,
+		}
+	);
+
+	let state: QueryState<number> | null = null;
+	const effect_cb = vi.fn(() => {
+		state = count().get();
+	});
+	effect(effect_cb);
+	expect(state).toMatchObject({ state: 'pending' });
+
+	await sleep(20);
+	expect(state).toMatchObject({ state: 'error', error: 'Ops' });
+
+	expect(effect_cb).toHaveBeenCalledTimes(2);
+})
+
+test('Should update every n milliseconds', async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(10);
+			source += 2;
+			return source;
+		},
+		{
+			update_every: 10,
+			destroy_after: 10,
+		}
+	);
+
+	let state: QueryState<number> | null = null;
+	const effect_cb = vi.fn(() => {
+		state = count().get();
+	});
+	effect(effect_cb);
+	expect(state).toMatchObject({ state: 'pending' });
+	await sleep(15);
+	expect(state).toMatchObject({ state: 'finished', value: 3 });
+	await sleep(20);
+	expect(state).toMatchObject({ state: 'finished', value: 5 });
+	expect(effect_cb).toHaveBeenCalledTimes(3);
+})
+
+test('Setting the query value should invalidate ongoing fetching and then update after `update_every` milliseconds', async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(10);
+			source += 2;
+			return source;
+		},
+		{
+			update_every: 10,
+			destroy_after: 10,
+		}
+	);
+
+	let state: QueryState<number> | null = null;
+	const effect_cb = vi.fn(() => {
+		state = count().get();
+	});
+	effect(effect_cb);
+	expect(state).toMatchObject({ state: 'pending' });
+	await sleep(5);
+	count().set(2);
+	expect(state).toMatchObject({ state: 'finished', value: 2 });
+	await sleep(25);
+	expect(state).toMatchObject({ state: 'finished', value: 5 });
+	expect(effect_cb).toHaveBeenCalledTimes(3);
+})
+
+test('The query should be destroyed after not subscribed for `delete_after` milliseconds', async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(10);
+			source += 2;
+			return source;
+		},
+		{
+			update_every: 20,
+			destroy_after: 20,
+		}
+	);
+
+	expect(count().get()).toMatchObject({ state: 'pending' });
+	await sleep(15);
+	expect(count().get()).toMatchObject({ state: 'finished', value: 3 });
+	await sleep(20);
+	expect(count().get()).toMatchObject({ state: 'pending' });
+	await sleep(15);
+	expect(count().get()).toMatchObject({ state: 'finished', value: 5 });
+})
 
 test("stringify() should return a stable result", () => {
 	expect(stringify(undefined)).toBe('_');
