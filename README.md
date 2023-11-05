@@ -13,6 +13,12 @@ What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? Tha
 
 [**CodeSandbox**](https://codesandbox.io/p/sandbox/mesin-24nhch)
 
+## Install
+
+```
+npm install mesin
+```
+
 ## Example
 
 ```typescript
