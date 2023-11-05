@@ -11,6 +11,8 @@ What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? Tha
 - Circular dependency can be handled.
 - All the goodies of React Query.
 
+[**CodeSandbox**](https://codesandbox.io/p/sandbox/mesin-24nhch)
+
 ## Example
 
 ```typescript
