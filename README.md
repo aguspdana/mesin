@@ -1,14 +1,15 @@
-# Atomic state management system
+# Mesin
 
-What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? That's Mesin (pronounced like _machine_).
+(Pronounced like _machine_.)
 
-- Build dynamic graph state like spreadsheet's state.
-- Clean API: Track dependencies using signal like SolidJS instead of passing `get()` and `set()` functions.
+What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? That's Mesin.
+
+- Dynamic graph state like spreadsheet's state.
+- Track dependencies using signal like SolidJS.
 - Atoms used in multiple places are computed only once.
 - No memory leak.
-- Handled circular dependency.
+- Circular dependency can be handled.
 - All the goodies of React Query.
-- Computed stores are computed synchronously which avoid most race conditions.
 
 ## Example
 
