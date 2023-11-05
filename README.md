@@ -15,47 +15,47 @@ What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? Tha
 
 ```typescript
 const users = store({
-	'user-1': {
-		name: 'Foo',
-		friends: ['user-2'],
-	},
-	'user-2': {
-		name: 'Bar',
-		friends: ['user-1'],
-	},
+    'user-1': {
+        name: 'Foo',
+        friends: ['user-2'],
+    },
+    'user-2': {
+        name: 'Bar',
+        friends: ['user-1'],
+    },
 });
 
 const user = compute((id: string) => {
-	users.select((all_users) => all_users[id]);
+    users.select((all_users) => all_users[id]);
 });
 
 const user_friends = compute((id: string) => {
-	const current_user = user(id).get();
-	const friends = current_user?.friends?.map((friend_id) => {
-		user(friend_id).get();
-	});
-	return friends;
+    const current_user = user(id).get();
+    const friends = current_user?.friends?.map((friend_id) => {
+        user(friend_id).get();
+    });
+    return friends;
 })
 
 const User = ({ id }: { id: string }) => {
-	const current_user = useStore(user(id));
-	const friends = useStore(user_friends(id));
+    const current_user = useStore(user(id));
+    const friends = useStore(user_friends(id));
 
-	if (!current_user) {
-		return null;
-	}
+    if (!current_user) {
+        return null;
+    }
 
-	return (
-		<div>
-			<h2>{current_user.name}</h2>
-			<h3>Friends</h3>
-			<ul>
-				{friends?.map((friend) => (
-					<li>{friend.name}</li>
-				))}
-			</ul>
-		</div>
-	);
+    return (
+        <div>
+            <h2>{current_user.name}</h2>
+            <h3>Friends</h3>
+            <ul>
+                {friends?.map((friend) => (
+                    <li>{friend.name}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 ```
 
@@ -65,11 +65,11 @@ A writable primitive store.
 
 ```typescript
 const users = store({
-	'user-1': {
-		name: 'Foo',
-		date_of_birth: 2000,
-	},
-	...
+    'user-1': {
+        name: 'Foo',
+        date_of_birth: 2000,
+    },
+    ...
 });
 ```
 
@@ -77,7 +77,7 @@ Get all users:
 
 ```typescript
 const all_users = computed((id: string) => {
-	return users.get();
+    return users.get();
 })
 ```
 
@@ -85,7 +85,7 @@ Select a user:
 
 ```typescript
 const user = computed((id: string) => {
-	return users.select((all) => all[id]);
+    return users.select((all) => all[id]);
 })
 ```
 
@@ -95,8 +95,8 @@ The store value can be updated from anywhere:
 
 ```typescript
 function add_user(id: string, user: User) {
-	const all = users.get();
-	users.set({ ...users, [id]: user });
+    const all = users.get();
+    users.set({ ...users, [id]: user });
 }
 ```
 
@@ -104,15 +104,15 @@ From a computed store:
 
 ```typescript
 const user = computed((id: string) => {
-	const current_user = users.select((all) => all[id]);
-	if (current_user.date_of_birth >= 2000) {
-		// Delete user
-		const new_users = { ...users.get() };
-		delete new_users[id];
-		users.set(new_users);
-		return;
-	}
-	return current_user;
+    const current_user = users.select((all) => all[id]);
+    if (current_user.date_of_birth >= 2000) {
+        // Delete user
+        const new_users = { ...users.get() };
+        delete new_users[id];
+        users.set(new_users);
+        return;
+    }
+    return current_user;
 });
 ```
 
@@ -120,17 +120,17 @@ From an effect:
 
 ```typescript
 effect(() => {
-	const new_users = { ...users.get() };
-	let changed = false;
-	Object.entries(new_users).forEach((id, user) => {
-		if (user.score < 0) {
-			delete all[id];
-			changed = true;
-		}
-	});
-	if (changed) {
-		users.set(new_users);
-	}
+    const new_users = { ...users.get() };
+    let changed = false;
+    Object.entries(new_users).forEach((id, user) => {
+        if (user.score < 0) {
+            delete all[id];
+            changed = true;
+        }
+    });
+    if (changed) {
+        users.set(new_users);
+    }
 });
 ```
 
@@ -141,9 +141,9 @@ If a store is set multiple times in a the same write cycle, only the last set is
 ```typescript
 const count = store(0);
 effect(() => {
-	const current_count = count.get();
-	count.set(current_count + 1); // Ignored
-	count.set(current_count + 2);
+    const current_count = count.get();
+    count.set(current_count + 1); // Ignored
+    count.set(current_count + 2);
 });
 ```
 
@@ -155,11 +155,11 @@ A reactive store that is computed from primitive stores or other computed stores
 
 ```typescript
 const user_age = compute((id: string) => {
-	const date_of_birth = user(id).select((u) => u.date_of_birth);
-	if (date_of_birth === undefined) {
-		return;
-	}
-	new Date.getFullYear() - date_of_birth;
+    const date_of_birth = user(id).select((u) => u.date_of_birth);
+    if (date_of_birth === undefined) {
+        return;
+    }
+    new Date.getFullYear() - date_of_birth;
 });
 ```
 
@@ -167,11 +167,11 @@ When there's a circular dependency, `get()` and `select()` throw an error, and i
 
 ```typescript
 const x = compute(() => {
-	try {
-		return x().get();
-	} catch {
-		return 0;
-	}
+    try {
+        return x().get();
+    } catch {
+        return 0;
+    }
 })
 // x().get() === 0;
 ```
@@ -184,11 +184,11 @@ A function that is called every time its current dependencies change.
 
 ```typescript
 effect(() => {
-	// This function is called every time users and orders change.
-	const all_users = users.get();
-	const all_orders = orders.get();
-	console.log('users', all_users);
-	console.log('orders', all_orders);
+    // This function is called every time users and orders change.
+    const all_users = users.get();
+    const all_orders = orders.get();
+    console.log('users', all_users);
+    console.log('orders', all_orders);
 });
 ```
 
@@ -197,28 +197,28 @@ effect(() => {
 ```typescript
 const stored_settings = localStorage.getItem('settings');
 const init_settings = stored_settings
-	? JSON.parse(stored_settings)
-	: DEFAULT_SETTINGS;
+    ? JSON.parse(stored_settings)
+    : DEFAULT_SETTINGS;
 const settings = store(init_settings);
 let last_value_from_storage = init_settings;
 
 addEventListener('storage', (e) => {
-	if (e.key === 'settings' && e.newValue) {
-		try {
-			const new_value = JSON.parse(e.newValue);
-			settings.set(new_value);
-		} catch {
-			const current = settings.get();
-			localStorage.setItem('settings', JSON.stringify(current));
-		}
-	}
+    if (e.key === 'settings' && e.newValue) {
+        try {
+            const new_value = JSON.parse(e.newValue);
+            settings.set(new_value);
+        } catch {
+            const current = settings.get();
+            localStorage.setItem('settings', JSON.stringify(current));
+        }
+    }
 });
 
 effect(() => {
-	const current = settings.get();
-	if (current !== last_value_from_storage) {
-		localStorage.setItem('settings', JSON.stringify(current));
-	}
+    const current = settings.get();
+    if (current !== last_value_from_storage) {
+        localStorage.setItem('settings', JSON.stringify(current));
+    }
 });
 ```
 
@@ -228,7 +228,7 @@ A primitive store which is updated automatically with the return value of the lo
 
 ```typescript
 const user = query((id: string) => {
-	return fetch(`/users/${id}`);
+    return fetch(`/users/${id}`);
 });
 ```
 
@@ -236,17 +236,17 @@ A query can be in one of these three states:
 
 ```typescript
 export interface QueryPending {
-	state: 'pending';
+    state: 'pending';
 }
 
 export interface QueryError {
-	state: 'error';
-	error: unknown;
+    state: 'error';
+    error: unknown;
 }
 
 export interface QueryFinished<T> {
-	state: 'finished';
-	value: T;
+    state: 'finished';
+    value: T;
 }
 
 export type QueryState<T> = QueryPending | QueryError | QueryFinished<T>;
@@ -258,7 +258,7 @@ A query value can be set manually:
 
 ```typescript
 user('user-1').set({
-	name: 'Foo',
+    name: 'Foo',
 });
 ```
 
@@ -276,8 +276,8 @@ If you update multiple stores like this
 
 ```typescript
 function update() {
-	store_a.set(1);
-	store_b.set(1);
+    store_a.set(1);
+    store_b.set(1);
 }
 ```
 
@@ -287,10 +287,10 @@ You can use `batch()` to not trigger multiple recomputes to subscribers.
 
 ```typescript
 function update() {
-	batch(() => {
-		store_a.set(1);
-		store_b.set(1);
-	})
+    batch(() => {
+        store_a.set(1);
+        store_b.set(1);
+    })
 }
 ```
 
@@ -298,9 +298,9 @@ If you call `get()` after `set()`, you'll get the old value because the update i
 
 ```typescript
 batch(() => {
-	const a = store_a.get(); // 1
-	store_a.set(a + 1);
-	store_a.get();           // Still 1
+    const a = store_a.get(); // 1
+    store_a.set(a + 1);
+    store_a.get();           // Still 1
 })
 ```
 
@@ -315,9 +315,9 @@ Jotai's computed atom can be asynchronous and it could introduce race conditions
 ```typescript
 const a = atom(1);
 const b = atom(async (get) => {
-	return new Promise((resolve) => {
-		setTimeout(() => resolve(get(a) + 1), 1000);
-	});
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(get(a) + 1), 1000);
+    });
 });
 // Increment a, and you may get this combination for awhile
 // a = 2
