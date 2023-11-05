@@ -83,6 +83,17 @@ test("Multiple read of the same store should trigger update __only__ once", () =
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 });
 
+test("Should throw an error when circular dependency is detected", () => {
+	const x = compute(() => {
+		try {
+			x().get();
+		} catch {
+			return 0;
+		}
+	});
+	expect(x().get()).toBe(0);
+});
+
 test("Batch update should trigger the effect __only__ once", () => {
 	const x = store(0);
 	const y = store(10);

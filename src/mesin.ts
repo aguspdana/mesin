@@ -204,6 +204,7 @@ class ComputedImpl<P extends Param, T> {
 	private subscribers = new Map<symbol, Subscriber<T, unknown>>();
 	private destroy: () => void;
 	private destroy_timeout: ReturnType<typeof setTimeout> | null = null;
+	private computing = false;
 
 	constructor(param: P, compute: ComputeFn<P, T>, destroy: () => void) {
 		this.param = param;
@@ -229,6 +230,7 @@ class ComputedImpl<P extends Param, T> {
 			}
 		}
 
+		this.computing = true;
 		const value = MANAGER.compute(
 			this.param,
 			this.computeFn,
@@ -237,6 +239,7 @@ class ComputedImpl<P extends Param, T> {
 				update: update.bind(this),
 			},
 		);
+		this.computing = false;
 
 		this.cache = {
 			value,
@@ -293,6 +296,9 @@ class ComputedImpl<P extends Param, T> {
 	}
 
 	select<V>(selector: Selector<T, V>): V {
+		if (this.computing) {
+			throw new Error('Circular dependency detected');
+		}
 		const { value } = this.get_cache_or_compute();
 		const selected = selector(value);
 		this.subscribe_context(selected, selector);
