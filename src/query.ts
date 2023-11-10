@@ -125,7 +125,7 @@ class QueryImpl<P extends Param, T> {
 	}
 }
 
-class Query<P extends Param, T> {
+export class Query<P extends Param, T> {
 	private get_impl: () => QueryImpl<P, T>;
 
 	constructor(get_impl: () => QueryImpl<P, T>) {
