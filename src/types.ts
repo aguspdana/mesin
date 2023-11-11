@@ -11,7 +11,7 @@ export type NotPromise<T> = T extends Promise<unknown> ? never : T;
 
 export type Selector<T, V> = (data: T) => V;
 
-export type ComputeFn<P extends Param, V> = (data: P) => NotPromise<V>;
+export type ComputeFn<P extends Param, V extends NotPromise<unknown>> = (data: P) => V;
 
 export interface Context {
 	add_dependency: (dependency: Dependency) => void;

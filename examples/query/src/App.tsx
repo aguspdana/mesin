@@ -26,7 +26,7 @@ const user = query((n: number): Promise<{ name: string; age: number }> => {
         resolve(user);
       }
       reject(new Error("User not found"));
-    }, 1000);
+    }, 5000);
   });
 });
 
@@ -36,10 +36,12 @@ function increment() {
 
 function User(props: { id: number }) {
   const { id } = props;
-  console.log("user id", id);
   const _user = useStore(user(id));
   if (_user.state === "error") {
-    return <p>{_user.error.toString()}</p>;
+    if (_user.error instanceof Error) {
+      return <p>{_user.error.toString()}</p>;
+    }
+    return <p>Error</p>;
   }
   if (_user.state === "pending") {
     return <p>Loading user {id}</p>;

@@ -17,7 +17,7 @@ export class Manager {
 		}
 	}
 
-	compute<P extends Param, T>(param: P, compute: ComputeFn<P, T>, context: Context): NotPromise<T> {
+	compute<P extends Param, T extends NotPromise<unknown>>(param: P, compute: ComputeFn<P, T>, context: Context): T {
 		this.contexts.push(context as Context);
 		const value = compute(param);
 		this.contexts.pop();

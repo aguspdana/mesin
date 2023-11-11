@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { Store } from "./store";
-import { NotPromise, Param } from "./types";
+import { NotPromise, Param, QueryState } from "./types";
 import { effect } from "./effect";
 import { Computed } from "./computed";
+import { Query } from "./query";
 
-export function useStore<T>(store: Store<NotPromise<T>> | Computed<Param, NotPromise<T>>) {
-	const [value, setValue] = useState<NotPromise<T>>(store.get());
+export function useStore<T extends NotPromise<unknown>>(store: Query<Param, T>): QueryState<T>;
+
+export function useStore<T extends NotPromise<unknown>>(store: Store<NotPromise<T>> | Computed<Param, T>): T;
+
+export function useStore<T extends NotPromise<unknown>>(store: Store<T> | Computed<Param, T> | Query<Param, T>) {
+	const init = store.get();
+	const [, setCount] = useState(0);
 	const should_update = useRef(false);
 
 	useEffect(() => {
 		should_update.current = false;
 
 		const dispose = effect(() => {
-			const newValue = store.get();
+			store.get();
 			if (should_update.current) {
-				setValue(newValue);
+				setCount((c) => c + 1);
 			}
 		});
 
@@ -23,5 +29,5 @@ export function useStore<T>(store: Store<NotPromise<T>> | Computed<Param, NotPro
 		return () => dispose();
 	}, [store])
 
-	return value;
+	return init;
 }

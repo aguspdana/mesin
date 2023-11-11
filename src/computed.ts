@@ -9,7 +9,7 @@ import type {
 	Subscriber
 } from "./types";
 
-class ComputedImpl<P extends Param, T> {
+class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 	private param: P;
 	private computeFn: ComputeFn<P, T>;
 	private cache: {
@@ -153,7 +153,7 @@ class ComputedImpl<P extends Param, T> {
 	}
 }
 
-export class Computed<P extends Param, T> {
+export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	private get_impl: () => ComputedImpl<P, T>;
 
 	constructor(get_impl: () => ComputedImpl<P, T>) {
@@ -169,7 +169,7 @@ export class Computed<P extends Param, T> {
 	}
 }
 
-export function compute<P extends Param, T>(cb: (param: P) => NotPromise<T>) {
+export function compute<P extends Param, T extends NotPromise<unknown>>(cb: (param: P) => T) {
 	const impl_map = new Map<string, ComputedImpl<P, T>>();
 
 	return function(param: P) {
