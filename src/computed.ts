@@ -9,6 +9,11 @@ import type {
 	Subscriber
 } from "./types";
 
+/**
+ * Remove the computed store from the cache after it has no subscriber for DESTROY_AFTER milliseconds.
+ */
+const DESTROY_AFTER = 1000; // milliseconds
+
 class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 	private param: P;
 	private computeFn: ComputeFn<P, T>;
@@ -37,12 +42,13 @@ class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 		}
 
 		const update = () => {
-			if (this.cache?.clock !== MANAGER.clock) {
-				if (this.subscribers.size === 0) {
-					this.cache = null;
-				} else {
-					this.compute();
-				}
+			if (this.cache?.clock === MANAGER.clock) {
+				return;
+			}
+			if (this.subscribers.size === 0) {
+				this.cache = null;
+			} else {
+				this.compute();
 			}
 		}
 
@@ -77,18 +83,15 @@ class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 	}
 
 	private get_cache_or_compute() {
-		if (this.cache) {
-			if (this.cache.clock === MANAGER.clock) {
-				return this.cache;
-			} else if (!this.dependencies.some(({ changed }) => changed())){
-				this.cache.clock = MANAGER.clock;
-				return this.cache;
-			} else {
-				return this.compute();
-			}
-		} else {
+		if (!this.cache) {
 			return this.compute();
+		} else if (this.cache.clock === MANAGER.clock) {
+			return this.cache;
+		} else if (!this.dependencies.some(({ changed }) => changed())){
+			this.cache.clock = MANAGER.clock;
+			return this.cache;
 		}
+		return this.compute();
 	}
 
 	private maybe_destroy() {
@@ -108,7 +111,7 @@ class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 			}
 			this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
 			this.destroy();
-		}, 1000);
+		}, DESTROY_AFTER);
 	}
 
 	select<V>(selector: Selector<T, V>): V {

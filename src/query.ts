@@ -18,12 +18,12 @@ class QueryImpl<P extends Param, T> {
 			this.subscribers_count = count;
 			if (count === 0) {
 				this.schedule_destroy();
-			} else {
-				this.cancel_destroy();
-				const isStale = Date.now() - this.last_update > this.options.update_every;
-				if (isStale && !this.loading) {
-					this.load();
-				}
+				return;
+			}
+			this.cancel_destroy();
+			const isStale = Date.now() - this.last_update > this.options.update_every;
+			if (isStale && !this.loading) {
+				this.load();
 			}
 		}
 	);
