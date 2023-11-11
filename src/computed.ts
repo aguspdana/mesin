@@ -14,7 +14,7 @@ import type {
  */
 const DESTROY_AFTER = 1000; // milliseconds
 
-class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
+export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	private param: P;
 	private computeFn: ComputeFn<P, T>;
 	private cache: {
@@ -156,41 +156,59 @@ class ComputedImpl<P extends Param, T extends NotPromise<unknown>> {
 	}
 }
 
-export class Computed<P extends Param, T extends NotPromise<unknown>> {
-	private get_impl: () => ComputedImpl<P, T>;
-
-	constructor(get_impl: () => ComputedImpl<P, T>) {
-		this.get_impl = get_impl;
-	}
-
-	get(): T {
-		return this.get_impl().get();
-	}
-
-	select<V>(selector: Selector<T, V>): V {
-		return this.get_impl().select(selector);
-	}
-}
-
 export function compute<P extends Param, T extends NotPromise<unknown>>(cb: (param: P) => T) {
-	const impl_map = new Map<string, ComputedImpl<P, T>>();
+	const impl_map = new Map<string, Computed<P, T>>();
 
 	return function(param: P) {
 		const key = stringify(param);
-
-		function get_impl() {
-			const impl = impl_map.get(key);
-			if (impl) {
-				return impl;
-			}
-			function destroy() {
-				impl_map.delete(key);
-			}
-			const new_impl = new ComputedImpl(param, cb, destroy);
-			impl_map.set(key, new_impl);
-			return new_impl;
+		const impl = impl_map.get(key);
+		if (impl) {
+			return impl;
 		}
-
-		return new Computed(get_impl);
+		function destroy() {
+			impl_map.delete(key);
+		}
+		const new_impl = new Computed(param, cb, destroy);
+		impl_map.set(key, new_impl);
+		return new_impl;
 	}
 }
+
+// export class Computed<P extends Param, T extends NotPromise<unknown>> {
+// 	private get_impl: () => ComputedImpl<P, T>;
+
+// 	constructor(get_impl: () => ComputedImpl<P, T>) {
+// 		this.get_impl = get_impl;
+// 	}
+
+// 	get(): T {
+// 		return this.get_impl().get();
+// 	}
+
+// 	select<V>(selector: Selector<T, V>): V {
+// 		return this.get_impl().select(selector);
+// 	}
+// }
+
+// export function compute<P extends Param, T extends NotPromise<unknown>>(cb: (param: P) => T) {
+// 	const impl_map = new Map<string, ComputedImpl<P, T>>();
+
+// 	return function(param: P) {
+// 		const key = stringify(param);
+
+// 		function get_impl() {
+// 			const impl = impl_map.get(key);
+// 			if (impl) {
+// 				return impl;
+// 			}
+// 			function destroy() {
+// 				impl_map.delete(key);
+// 			}
+// 			const new_impl = new ComputedImpl(param, cb, destroy);
+// 			impl_map.set(key, new_impl);
+// 			return new_impl;
+// 		}
+
+// 		return new Computed(get_impl);
+// 	}
+// }
