@@ -26,12 +26,16 @@ const user = query((n: number): Promise<{ name: string; age: number }> => {
         resolve(user);
       }
       reject(new Error("User not found"));
-    }, 5000);
+    }, 3000);
   });
 });
 
 function increment() {
   user_id.set(user_id.get() + 1);
+}
+
+function decrement() {
+  user_id.set(user_id.get() - 1);
 }
 
 function User(props: { id: number }) {
@@ -58,7 +62,11 @@ function App() {
 
   return (
     <div className="App">
-      <button onClick={increment}>Increment user id {id}</button>
+      <div className="actions">
+        <button onClick={increment}>Increment user id</button>
+        <button onClick={decrement}>Decrement user id</button>
+      </div>
+      <p>User id = {id}</p>
       <User id={id} />
     </div>
   );

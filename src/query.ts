@@ -7,7 +7,7 @@ const DEFAULT_QUERY_OPTIONS: QueryOptions = {
 	destroy_after: 5 * 60_000,
 };
 
-class QueryImpl<P extends Param, T> {
+export class Query<P extends Param, T> {
 	private subscribers_count = 0;
 	private param: P;
 	private loader: (param: P) => Promise<T>;
@@ -125,57 +125,29 @@ class QueryImpl<P extends Param, T> {
 	}
 }
 
-export class Query<P extends Param, T> {
-	private get_impl: () => QueryImpl<P, T>;
-
-	constructor(get_impl: () => QueryImpl<P, T>) {
-		this.get_impl = get_impl;
-	}
-
-	get(): QueryState<T> {
-		return this.get_impl().get();
-	}
-
-	load() {
-		this.get_impl().load();
-	}
-
-	select<V>(selector: Selector<QueryState<T>, V>): V {
-		return this.get_impl().select(selector);
-	}
-
-	set(value: T) {
-		this.get_impl().set(value);
-	}
-}
-
 export function query<P extends Param, T>(
 	loader: (param: P) => Promise<T>,
 	options?: Partial<QueryOptions>
 ) {
-	const impl_map = new Map<string, QueryImpl<P, T>>();
+	const map = new Map<string, Query<P, T>>();
 
 	return function(param: P) {
 		const key = stringify(param);
 
-		function get_impl() {
-			const existing_query = impl_map.get(key);
-			if (existing_query) {
-				return existing_query;
-			}
-			function destroy() {
-				impl_map.delete(key);
-			}
-			const new_query = new QueryImpl({
-				param,
-				loader,
-				destroy,
-				options: { ...DEFAULT_QUERY_OPTIONS, ...options },
-			});
-			impl_map.set(key, new_query);
-			return new_query;
+		const existing_query = map.get(key);
+		if (existing_query) {
+			return existing_query;
 		}
-
-		return new Query(get_impl);
+		function destroy() {
+			map.delete(key);
+		}
+		const new_query = new Query({
+			param,
+			loader,
+			destroy,
+			options: { ...DEFAULT_QUERY_OPTIONS, ...options },
+		});
+		map.set(key, new_query);
+		return new_query;
 	}
 }

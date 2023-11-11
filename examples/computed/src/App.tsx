@@ -42,10 +42,12 @@ function App() {
 
   return (
     <div className="App">
-      <button onClick={increment_a}>a = {_a}</button>
-      <button onClick={increment_b}>b = {_b}</button>
-      <button onClick={increment_c}>c = {_c}</button>
-      <button onClick={increment_d}>d = {_d}</button>
+      <div className="actions">
+        <button onClick={increment_a}>a = {_a}</button>
+        <button onClick={increment_b}>b = {_b}</button>
+        <button onClick={increment_c}>c = {_c}</button>
+        <button onClick={increment_d}>d = {_d}</button>
+      </div>
       <p>abcd = {_abcd}</p>
     </div>
   );
