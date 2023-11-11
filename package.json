@@ -34,7 +34,7 @@
     "test": "vitest run",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "prepare": "npm run test && npm run build",
-    "publish": "prepare && npm publish"
+    "publish": "npm run prepare && npm publish"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
