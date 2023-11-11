@@ -9,11 +9,11 @@ const user = query((id: string) => {
 function User(props: { id: string }) {
    const user_state = useStore(user(id));
 
-   if (user_state.state === 'pending') {
+   if (user_state.status === 'pending') {
       return <p>Loading...</p>;
    }
 
-   if (user_state.state === 'error') {
+   if (user_state.status === 'error') {
       return <p>Opps</p>;
    }
 

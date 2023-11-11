@@ -4,7 +4,7 @@
 
 What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? That's Mesin.
 
-- Dynamic graph state like spreadsheet's state.
+- Atomic state with dynamic dependencies like spreadsheet's state.
 - Track dependencies using signal like SolidJS.
 - Atoms used in multiple places are computed only once.
 - No memory leak.
@@ -244,16 +244,16 @@ A query can be in one of these three states:
 
 ```typescript
 export interface QueryPending {
-    state: 'pending';
+    status: 'pending';
 }
 
 export interface QueryError {
-    state: 'error';
+    status: 'error';
     error: unknown;
 }
 
 export interface QueryFinished<T> {
-    state: 'finished';
+    status: 'finished';
     value: T;
 }
 

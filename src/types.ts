@@ -34,16 +34,16 @@ export type NotifyFn = () => void;
 export type UpdateFn = () => NotifyFn;
 
 export interface QueryPending {
-	state: 'pending';
+	status: 'pending';
 }
 
 export interface QueryError {
-	state: 'error';
+	status: 'error';
 	error: unknown;
 }
 
 export interface QueryFinished<T> {
-	state: 'finished';
+	status: 'finished';
 	value: T;
 }
 

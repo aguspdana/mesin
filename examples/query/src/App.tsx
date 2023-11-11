@@ -41,13 +41,13 @@ function decrement() {
 function User(props: { id: number }) {
   const { id } = props;
   const _user = useStore(user(id));
-  if (_user.state === "error") {
+  if (_user.status === "error") {
     if (_user.error instanceof Error) {
       return <p>{_user.error.toString()}</p>;
     }
     return <p>Error</p>;
   }
-  if (_user.state === "pending") {
+  if (_user.status === "pending") {
     return <p>Loading user {id}</p>;
   }
   return (

@@ -13,7 +13,7 @@ export class Query<P extends Param, T> {
 	private loader: (param: P) => Promise<T>;
 	private destroy: () => void;
 	private store = new Store<QueryState<T>>(
-		{ state: 'pending' },
+		{ status: 'pending' },
 		(count) => {
 			this.subscribers_count = count;
 			if (count === 0) {
@@ -81,12 +81,12 @@ export class Query<P extends Param, T> {
 			if (this.load_id !== load_id) {
 				return;
 			}
-			this.store.set({ state: 'finished', value });
+			this.store.set({ status: 'finished', value });
 		} catch (error) {
 			if (this.load_id !== load_id) {
 				return;
 			}
-			this.store.set({ state: 'error', error });
+			this.store.set({ status: 'error', error });
 		}
 
 		this.loading = false;
@@ -117,7 +117,7 @@ export class Query<P extends Param, T> {
 		// Invalidate pending fetch.
 		this.load_id += 1;
 
-		this.store.set({ state: 'finished', value });
+		this.store.set({ status: 'finished', value });
 
 		this.loading = false;
 		this.last_update = Date.now();
