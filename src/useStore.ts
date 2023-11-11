@@ -10,24 +10,28 @@ export function useStore<T extends NotPromise<unknown>>(store: Query<Param, T>):
 export function useStore<T extends NotPromise<unknown>>(store: Store<NotPromise<T>> | Computed<Param, T>): T;
 
 export function useStore<T extends NotPromise<unknown>>(store: Store<T> | Computed<Param, T> | Query<Param, T>) {
-	const init = store.get();
 	const [, setCount] = useState(0);
-	const should_update = useRef(false);
+	const store_ref = useRef<Store<T> | Computed<Param, T> | Query<Param, T>>();
+	const value_ref = useRef<T | QueryState<T>>();
+
+	if (store !== store_ref.current) {
+		store_ref.current = store;
+		value_ref.current = store.get();
+	}
 
 	useEffect(() => {
-		should_update.current = false;
-
+		let should_update = false;
 		const dispose = effect(() => {
-			store.get();
-			if (should_update.current) {
+			const value = store.get();
+			if (should_update) {
+				value_ref.current = value;
 				setCount((c) => c + 1);
 			}
 		});
-
-		should_update.current = true;
+		should_update = true;
 
 		return () => dispose();
-	}, [store])
+	}, [store]);
 
-	return init;
+	return value_ref.current;
 }
