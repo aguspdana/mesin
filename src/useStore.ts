@@ -23,7 +23,7 @@ export function useStore<T extends NotPromise<unknown>>(store: Store<T> | Comput
 		let should_update = false;
 		const dispose = effect(() => {
 			const value = store.get();
-			if (should_update) {
+			if (should_update && value_ref.current !== value) {
 				value_ref.current = value;
 				setCount((c) => c + 1);
 			}
