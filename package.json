@@ -7,7 +7,7 @@
   "homepage": "https://github.com/aguspdana/mesin",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aguspdana/mesin"
+    "url": "git+https://github.com/aguspdana/mesin.git"
   },
   "type": "module",
   "main": "./dist/index.js",
