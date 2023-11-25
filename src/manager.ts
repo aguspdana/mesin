@@ -1,11 +1,11 @@
 import { Store } from "./store";
-import { ComputeFn, Context, NotPromise, Param, UpdateFn } from "./types";
+import type { ComputeFn, Context, NotPromise, Param, UpdateFn } from "./types";
 
 export class Manager {
 	clock = 0;
-	contexts: Context[] = [];
-	pending_updates: Map<Store<unknown>, UpdateFn> | null = null;
-	pending_notifications: (() => void)[] = [];
+	private contexts: Context[] = [];
+	private pending_updates: Map<Store<unknown>, UpdateFn> | null = null;
+	private pending_notifications: (() => void)[] = [];
 
 	batch(cb: () => void) {
 		const parent_batch_exists = !!this.pending_updates;

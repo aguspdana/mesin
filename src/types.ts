@@ -19,7 +19,7 @@ export interface Context {
 }
 
 export interface Subscriber<T, V> {
-	update: () => void;
+	notify: () => void;
 	selector: (value: T) => V;
 	value: V;
 }

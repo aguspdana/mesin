@@ -15,7 +15,7 @@ import { schedule } from "./utils";
  */
 const REMOVE_FROM_REGISTRY_AFTER = 1000; // milliseconds
 
-class CircularDependencyError extends Error {
+export class CircularDependencyError extends Error {
 	constructor(msg: string) {
 		super(msg);
 		this.name = "CircularDependencyError";
@@ -76,11 +76,13 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 			clock: MANAGER.clock,
 		}
 
+		// Send notification to dependencies's subscribers.
 		MANAGER.send_pending_notifications();
+
 		Array.from(this.subscribers.values()).forEach((s) => {
 			const selected = s.selector(value);
 			if (s.value !== selected) {
-				MANAGER.notify_next(s.update);
+				MANAGER.notify_next(s.notify);
 			}
 		});
 
@@ -103,7 +105,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 		return this.compute();
 	}
 
-	private maybe_destroy() {
+	private schedule_removal() {
 		this.cancel_removal?.();
 
 		if (this.subscribers.size !== 0) {
@@ -128,7 +130,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 		const { value } = this.get_cache_or_compute();
 		const selected = selector(value);
 		this.add_context_as_subscriber(selected, selector);
-		this.maybe_destroy();
+		this.schedule_removal();
 		return selected;
 	}
 
@@ -139,13 +141,13 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 		const context = MANAGER.get_context();
 
 		if (context) {
-			const { add_dependency, notify: update } = context;
+			const { add_dependency, notify } = context;
 			const key = Symbol();
-			const subscriber = { value, update, selector };
+			const subscriber = { value, notify, selector };
 
 			const unsubscribe = () => {
 				this.subscribers.delete(key);
-				this.maybe_destroy();
+				this.schedule_removal();
 			}
 
 			const changed = (): boolean => {
@@ -168,15 +170,15 @@ export function compute<P extends Param, T extends NotPromise<unknown>>(cb: (par
 
 	return function(param: P) {
 		const key = stringify(param);
-		const impl = registry.get(key);
-		if (impl) {
-			return impl;
+		const existing_computed = registry.get(key);
+		if (existing_computed) {
+			return existing_computed;
 		}
 		function remove_from_registry() {
 			registry.delete(key);
 		}
-		const new_impl = new Computed(param, cb, remove_from_registry);
-		registry.set(key, new_impl);
-		return new_impl;
+		const new_computed = new Computed(param, cb, remove_from_registry);
+		registry.set(key, new_computed);
+		return new_computed;
 	}
 }

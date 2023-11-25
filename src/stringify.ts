@@ -30,8 +30,7 @@ export function stringify(input: Param): string {
 	}
 
 	if (Array.isArray(input)) {
-		const items = input.map((i) => stringify(i));
-		return `[${items.join(',')}]`
+		return `[${input.map((i) => stringify(i)).join(',')}]`
 	}
 
 	if (typeof input === 'object') {
@@ -41,11 +40,10 @@ export function stringify(input: Param): string {
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const value = input[key];
-			const stable_key = JSON.stringify(key);
+			const stable_key = stringify(key);
 			const stable_value = stringify(value);
 			if (value !== undefined) {
-				const prop = `${stable_key}:${stable_value}`;
-				props.push(prop);
+				props.push(`${stable_key}:${stable_value}`);
 			}
 		}
 

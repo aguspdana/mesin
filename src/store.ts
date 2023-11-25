@@ -19,21 +19,16 @@ export class Store<T> {
 		const value = selector(this.value);
 		const context = MANAGER.get_context();
 		if (context) {
-			const { add_dependency, notify: update } = context;
+			const { add_dependency, notify } = context;
 			const key = Symbol();
-			const subscriber = { value, update, selector };
+			const subscriber = { value, notify, selector };
 			const unsubscribe = () => {
 				this.subscribers.delete(key);
 				this.notify_subscribers_count?.(this.subscribers.size);
 			}
-			const changed = () => {
-				return subscriber.selector(this.value) !== subscriber.value;
-			}
-			add_dependency({
-				unsubscribe: unsubscribe,
-				changed: changed,
-			});
-			this.subscribers.set(key, { value, update, selector });
+			const changed = () => subscriber.selector(this.value) !== subscriber.value;
+			add_dependency({ unsubscribe, changed });
+			this.subscribers.set(key, subscriber);
 			this.notify_subscribers_count?.(this.subscribers.size);
 		}
 		return value;
@@ -49,7 +44,7 @@ export class Store<T> {
 				this.subscribers.forEach((subscriber) => {
 					const new_value = subscriber.selector(value);
 					if (subscriber.value !== new_value) {
-						subscriber.update();
+						subscriber.notify();
 					}
 				});
 			}

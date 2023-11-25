@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Store } from "./store";
-import { NotPromise, Param, QueryState } from "./types";
-import { effect } from "./effect";
 import { Computed } from "./computed";
+import { effect } from "./effect";
 import { Query } from "./query";
+import { Store } from "./store";
+import type { NotPromise, Param, QueryState } from "./types";
 
 export function useStore<T extends NotPromise<unknown>>(store: Query<Param, T>): QueryState<T>;
 

@@ -19,10 +19,10 @@ export class Query<P extends Param, T> {
 			this.subscribers_count = count;
 			if (count === 0) {
 				this.schedule_removal();
+				// TODO: If subscribers count is 0 for awhile maybe cancel scheduled update.
 				return;
 			}
 			this.cancel_removal();
-			// TODO: If subscribers count is 0 for awhile maybe cancel scheduled update.
 			const isStale = Date.now() - this.last_update > this.options.update_every;
 			if (isStale && !this.is_loading) {
 				this.load();

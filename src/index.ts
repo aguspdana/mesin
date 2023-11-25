@@ -1,5 +1,5 @@
 export { store } from './store';
-export { compute } from './computed';
+export { CircularDependencyError, compute } from './computed';
 export { effect } from './effect';
 export { batch } from './manager';
 export { query } from './query';
