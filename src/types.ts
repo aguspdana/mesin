@@ -15,7 +15,7 @@ export type ComputeFn<P extends Param, V extends NotPromise<unknown>> = (data: P
 
 export interface Context {
 	add_dependency: (dependency: Dependency) => void;
-	update: () => void;
+	notify: () => void;
 }
 
 export interface Subscriber<T, V> {
@@ -58,5 +58,5 @@ export interface QueryOptions {
 	 * Delete the query from the cache after there's no subscriber for `n` milliseconds.
 	 * When it's used again it will be in "pending" state.
 	 */
-	destroy_after: number;
+	remove_after: number;
 }

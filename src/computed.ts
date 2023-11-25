@@ -8,11 +8,19 @@ import type {
 	Selector,
 	Subscriber
 } from "./types";
+import { schedule } from "./utils";
 
 /**
- * Remove the computed store from the cache after it has no subscriber for DESTROY_AFTER milliseconds.
+ * Remove the computed store from the registry after it has no subscriber for DESTROY_AFTER milliseconds.
  */
-const DESTROY_AFTER = 1000; // milliseconds
+const REMOVE_FROM_REGISTRY_AFTER = 1000; // milliseconds
+
+class CircularDependencyError extends Error {
+	constructor(msg: string) {
+		super(msg);
+		this.name = "CircularDependencyError";
+	}
+}
 
 export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	private param: P;
@@ -23,14 +31,14 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	} | null = null;
 	private dependencies: Dependency[] = [];
 	private subscribers = new Map<symbol, Subscriber<T, unknown>>();
-	private destroy: () => void;
-	private destroy_timeout: ReturnType<typeof setTimeout> | null = null;
-	private computing = false;
+	private remove_from_registry: () => void;
+	private cancel_removal: (() => void) | null = null;
+	private is_computing = false;
 
-	constructor(param: P, compute: ComputeFn<P, T>, destroy: () => void) {
+	constructor(param: P, compute: ComputeFn<P, T>, remove_from_registry: () => void) {
 		this.param = param;
 		this.computeFn = compute;
-		this.destroy = destroy;
+		this.remove_from_registry = remove_from_registry;
 	}
 
 	private compute() {
@@ -41,7 +49,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 			this.dependencies.push(dependency);
 		}
 
-		const update = () => {
+		const notify = () => {
 			if (this.cache?.clock === MANAGER.clock) {
 				return;
 			}
@@ -52,16 +60,16 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 			}
 		}
 
-		this.computing = true;
+		this.is_computing = true;
 		const value = MANAGER.compute(
 			this.param,
 			this.computeFn,
 			{
-				add_dependency: add_dependency,
-				update: update,
+				add_dependency,
+				notify,
 			},
 		);
-		this.computing = false;
+		this.is_computing = false;
 
 		this.cache = {
 			value,
@@ -96,32 +104,30 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	}
 
 	private maybe_destroy() {
-		if (this.destroy_timeout !== null) {
-			clearTimeout(this.destroy_timeout);
-		}
+		this.cancel_removal?.();
 
 		if (this.subscribers.size !== 0) {
-			this.destroy_timeout = null;
+			this.cancel_removal = null;
 			return;
 		}
 
-		this.destroy_timeout = setTimeout(() => {
-			this.destroy_timeout = null;
+		this.cancel_removal = schedule(() => {
+			this.cancel_removal = null;
 			if (this.subscribers.size !== 0) {
 				return;
 			}
 			this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
-			this.destroy();
-		}, DESTROY_AFTER);
+			this.remove_from_registry();
+		}, REMOVE_FROM_REGISTRY_AFTER);
 	}
 
 	select<V>(selector: Selector<T, V>): V {
-		if (this.computing) {
-			throw new Error('Circular dependency detected');
+		if (this.is_computing) {
+			throw new CircularDependencyError('Circular dependency detected');
 		}
 		const { value } = this.get_cache_or_compute();
 		const selected = selector(value);
-		this.subscribe_context(selected, selector);
+		this.add_context_as_subscriber(selected, selector);
 		this.maybe_destroy();
 		return selected;
 	}
@@ -129,12 +135,12 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	/**
 	 * Add the context as a subscriber and add the current computed store as a dependency of the context.
 	 */
-	private subscribe_context<V>(value: V, selector: Selector<T, V>) {
-		const context = MANAGER.context();
+	private add_context_as_subscriber<V>(value: V, selector: Selector<T, V>) {
+		const context = MANAGER.get_context();
 
 		if (context) {
-			const { add_dependency, update } = context;
-			const key = Symbol(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+			const { add_dependency, notify: update } = context;
+			const key = Symbol();
 			const subscriber = { value, update, selector };
 
 			const unsubscribe = () => {
@@ -158,19 +164,19 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 }
 
 export function compute<P extends Param, T extends NotPromise<unknown>>(cb: (param: P) => T) {
-	const impl_map = new Map<string, Computed<P, T>>();
+	const registry = new Map<string, Computed<P, T>>();
 
 	return function(param: P) {
 		const key = stringify(param);
-		const impl = impl_map.get(key);
+		const impl = registry.get(key);
 		if (impl) {
 			return impl;
 		}
-		function destroy() {
-			impl_map.delete(key);
+		function remove_from_registry() {
+			registry.delete(key);
 		}
-		const new_impl = new Computed(param, cb, destroy);
-		impl_map.set(key, new_impl);
+		const new_impl = new Computed(param, cb, remove_from_registry);
+		registry.set(key, new_impl);
 		return new_impl;
 	}
 }

@@ -17,9 +17,9 @@ export class Store<T> {
 
 	select<V>(selector: Selector<T, V>): V {
 		const value = selector(this.value);
-		const context = MANAGER.context();
+		const context = MANAGER.get_context();
 		if (context) {
-			const { add_dependency, update } = context;
+			const { add_dependency, notify: update } = context;
 			const key = Symbol();
 			const subscriber = { value, update, selector };
 			const unsubscribe = () => {

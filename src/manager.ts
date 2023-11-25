@@ -14,7 +14,7 @@ export class Manager {
 		}
 		cb();
 		if (!parent_batch_exists) {
-			this.run_batch();
+			this.maybe_run_batch();
 		}
 	}
 
@@ -22,11 +22,11 @@ export class Manager {
 		this.contexts.push(context as Context);
 		const value = compute(param);
 		this.contexts.pop();
-		this.run_batch();
+		this.maybe_run_batch();
 		return value;
 	}
 
-	context() {
+	get_context() {
 		if (this.contexts.length > 0) {
 			return this.contexts[this.contexts.length - 1];
 		}
@@ -34,7 +34,7 @@ export class Manager {
 	}
 
 	/**
-	 * Call `notify()` after all contexts are removed or immediately if there's no context.
+	 * Call `notify()` after the current context is finished or immediately if there's no context.
 	 */
 	notify_next(notify: () => void) {
 		if (this.contexts.length !== 0) {
@@ -47,7 +47,7 @@ export class Manager {
 	/**
 	 * Run batch update if there's no context.
 	 */
-	private run_batch() {
+	private maybe_run_batch() {
 		if (!this.pending_updates || this.contexts.length !== 0) {
 			return;
 		}

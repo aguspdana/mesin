@@ -19,7 +19,7 @@ export function effect(cb: () => void) {
 		const value = MANAGER.compute(
 			undefined,
 			cb,
-			{ add_dependency, update },
+			{ add_dependency, notify: update },
 		);
 		return value;
 	}

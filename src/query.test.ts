@@ -15,7 +15,7 @@ test('Query state should be in "finished" state after the initial fetch resolved
 		},
 		{
 			update_every: 10,
-			destroy_after: 10,
+			remove_after: 10,
 		}
 	);
 
@@ -40,7 +40,7 @@ test('Query should be in "error" state after the fetcher throws an error', async
 		},
 		{
 			update_every: 10,
-			destroy_after: 10,
+			remove_after: 10,
 		}
 	);
 
@@ -67,7 +67,7 @@ test('Should update every n milliseconds', async () => {
 		},
 		{
 			update_every: 10,
-			destroy_after: 10,
+			remove_after: 10,
 		}
 	);
 
@@ -94,7 +94,7 @@ test('Setting the query value should invalidate ongoing fetching and then update
 		},
 		{
 			update_every: 10,
-			destroy_after: 10,
+			remove_after: 10,
 		}
 	);
 
@@ -122,7 +122,7 @@ test('The query should be destroyed after not subscribed for `delete_after` mill
 		},
 		{
 			update_every: 20,
-			destroy_after: 20,
+			remove_after: 20,
 		}
 	);
 
