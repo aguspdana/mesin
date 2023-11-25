@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { compute } from "./computed";
 import { effect } from "./effect";
 import { store } from "./store";
+import { batch } from '.';
 
 test("Should update the computed store when the selected dependency changes", () => {
 	const store_1 = store({ a: 0, b: 10 });
@@ -78,4 +79,21 @@ test("Should throw an error when circular dependency is detected", () => {
 		}
 	});
 	expect(x().get()).toBe(0);
+});
+
+test("Should not trigger false circular dependency error", () => {
+	const a = store(1);
+	const b = store(2);
+	const c = compute(() => a.get());
+	const d = compute(() => c().get() + b.get());
+	const e = compute(() => d().get() + c().get());
+	let current_e: number | undefined;
+	effect(() => {
+		current_e = e().get();
+	});
+	batch(() => {
+		b.set(3);
+		a.set(4);
+	});
+	expect(current_e).toBe(11);
 });

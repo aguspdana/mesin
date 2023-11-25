@@ -4,12 +4,13 @@ import { ComputeFn, Context, NotPromise, Param, UpdateFn } from "./types";
 export class Manager {
 	clock = 0;
 	contexts: Context[] = [];
-	batch: Map<Store<unknown>, UpdateFn> | null = null;
+	pending_updates: Map<Store<unknown>, UpdateFn> | null = null;
+	pending_notifications: (() => void)[] = [];
 
-	batch_update(cb: () => void) {
-		const parent_batch_exists = !!this.batch;
+	batch(cb: () => void) {
+		const parent_batch_exists = !!this.pending_updates;
 		if (!parent_batch_exists) {
-			this.batch = new Map();
+			this.pending_updates = new Map();
 		}
 		cb();
 		if (!parent_batch_exists) {
@@ -33,28 +34,52 @@ export class Manager {
 	}
 
 	/**
+	 * Call `notify()` after all contexts are removed or immediately if there's no context.
+	 */
+	notify_next(notify: () => void) {
+		if (this.contexts.length !== 0) {
+			this.pending_notifications.push(notify);
+		} else {
+			notify();
+		}
+	}
+
+	/**
 	 * Run batch update if there's no context.
 	 */
 	private run_batch() {
-		if (!this.batch || this.contexts.length !== 0) {
+		if (!this.pending_updates || this.contexts.length !== 0) {
 			return;
 		}
-		if (this.batch.size === 0) {
-			this.batch = null;
+		if (this.pending_updates.size === 0) {
+			this.pending_updates = null;
 			return;
 		}
 		this.clock += 1;
-		const batch = Array.from(this.batch.values());
-		this.batch = null;
+		const batch = Array.from(this.pending_updates.values());
+		this.pending_updates = null;
 		batch.map((update) => update()).forEach((notify) => notify());
 	}
 
-	update(store: Store<unknown>, update: UpdateFn) {
-		if (this.batch) {
-			this.batch.set(store, update);
+	send_pending_notifications() {
+		if (this.contexts.length !== 0) {
+			return;
+		}
+		while (this.pending_notifications.length !== 0) {
+			const notify = this.pending_notifications.pop();
+			notify();
+		}
+	}
+
+	/**
+	 * Update the store after the current cycle is completed.
+	 */
+	update_next(store: Store<unknown>, update: UpdateFn) {
+		if (this.pending_updates) {
+			this.pending_updates.set(store, update);
 		} else if (this.contexts.length !== 0) {
-			this.batch = new Map();
-			this.batch.set(store, update);
+			this.pending_updates = new Map();
+			this.pending_updates.set(store, update);
 		} else {
 			this.clock += 1;
 			update()();
@@ -65,5 +90,5 @@ export class Manager {
 export const MANAGER = new Manager();
 
 export function batch(cb: () => void) {
-	MANAGER.batch_update(cb);
+	MANAGER.batch(cb);
 }

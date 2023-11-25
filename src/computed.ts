@@ -68,10 +68,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 			clock: MANAGER.clock,
 		}
 
+		MANAGER.send_pending_notifications();
 		Array.from(this.subscribers.values()).forEach((s) => {
 			const selected = s.selector(value);
 			if (s.value !== selected) {
-				s.update();
+				MANAGER.notify_next(s.update);
 			}
 		});
 

@@ -55,7 +55,7 @@ export class Store<T> {
 			}
 			return notify;
 		}
-		MANAGER.update(this as Store<unknown>, update);
+		MANAGER.update_next(this as Store<unknown>, update);
 	}
 }
 
