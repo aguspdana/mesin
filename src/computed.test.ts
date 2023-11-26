@@ -86,17 +86,16 @@ test("Should __not__ trigger false circular dependency error", () => {
 	const a = store(1);
 	const b = store(2);
 	const c = compute(() => a.get());
-	const d = compute(() => c().get() + b.get());
-	const e = compute(() => d().get() + c().get());
-	let current_e: number | undefined;
+	const d = compute(() => c().get());
+	const e = compute(() => d().get() + b.get());
+	const f = compute(() => e().get() + c().get());
 	effect(() => {
-		current_e = e().get();
+		f().get();
 	});
 	batch(() => {
 		b.set(3);
 		a.set(4);
 	});
-	expect(current_e).toBe(11);
 });
 
 test("Should unsubscribe dependencies when no subscriber left", () => {

@@ -62,6 +62,9 @@ export class Manager {
 	}
 
 	send_pending_notifications() {
+		if (this.contexts.length !== 0) {
+			return;
+		}
 		while (this.pending_notifications.length !== 0) {
 			this.pending_notifications.pop()?.();
 		}
