@@ -62,12 +62,8 @@ export class Manager {
 	}
 
 	send_pending_notifications() {
-		if (this.contexts.length !== 0) {
-			return;
-		}
 		while (this.pending_notifications.length !== 0) {
-			const notify = this.pending_notifications.pop();
-			notify();
+			this.pending_notifications.pop()?.();
 		}
 	}
 
