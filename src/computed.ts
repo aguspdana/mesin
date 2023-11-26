@@ -13,7 +13,7 @@ import { schedule } from "./utils";
 /**
  * Remove the computed store from the registry after it has no subscriber for DESTROY_AFTER milliseconds.
  */
-const REMOVE_FROM_REGISTRY_AFTER = 1000; // milliseconds
+export const REMOVE_FROM_REGISTRY_AFTER = 1000; // milliseconds
 
 export class CircularDependencyError extends Error {
 	constructor(msg: string) {
@@ -42,8 +42,10 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 	}
 
 	private compute() {
-		this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+		const prev_dependencies = this.dependencies;
 		this.dependencies = [];
+		
+		this.is_computing = true;
 
 		const add_dependency = (dependency: Dependency) => {
 			this.dependencies.push(dependency);
@@ -54,22 +56,23 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 				return;
 			}
 			if (this.subscribers.size === 0) {
+				this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+				this.dependencies = [];
 				this.cache = null;
 			} else {
 				this.compute();
 			}
 		}
 
-		this.is_computing = true;
 		const value = MANAGER.compute(
 			this.param,
 			this.computeFn,
-			{
-				add_dependency,
-				notify,
-			},
+			{ add_dependency, notify },
 		);
+
 		this.is_computing = false;
+
+		prev_dependencies.forEach(({ unsubscribe }) => unsubscribe());
 
 		this.cache = {
 			value,
@@ -113,14 +116,21 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 			return;
 		}
 
-		this.cancel_removal = schedule(() => {
+		const cancel_removal = schedule(() => {
 			this.cancel_removal = null;
 			if (this.subscribers.size !== 0) {
 				return;
 			}
 			this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+			this.dependencies = [];
+			this.cache = null;
 			this.remove_from_registry();
 		}, REMOVE_FROM_REGISTRY_AFTER);
+
+		this.cancel_removal = () => {
+			cancel_removal();
+			this.cancel_removal = null;
+		};
 	}
 
 	select<V>(selector: Selector<T, V>): V {
@@ -147,6 +157,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
 			const unsubscribe = () => {
 				this.subscribers.delete(key);
+				if (this.subscribers.size === 0) {
+					this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+					this.dependencies = [];
+					this.cache = null;
+				}
 				this.schedule_removal();
 			}
 
@@ -155,10 +170,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 				return subscriber.value !== selector(value);
 			}
 
-			add_dependency({
-				unsubscribe: unsubscribe,
-				changed: changed,
-			});
+			add_dependency({ unsubscribe, changed });
 
 			this.subscribers.set(key, subscriber);
 		}

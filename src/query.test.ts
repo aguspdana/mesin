@@ -2,10 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { effect } from "./effect";
 import { query } from './query';
 import { QueryState } from './types';
-
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { sleep } from './utils';
 
 test('Query state should be in "finished" state after the initial fetch resolved', async() => {
 	const count = query(

@@ -8,14 +8,10 @@ test("Batch update should trigger the effect __only__ once", () => {
 	const x = store(0);
 	const y = store(10);
 
-	const x_plus_1_cb = vi.fn(() => {
-		return x.select((v) => v) + 1;
-	});
+	const x_plus_1_cb = vi.fn(() => x.get() + 1);
 	const x_plus_1 = compute(x_plus_1_cb);
 
-	const y_plus_1_cb = vi.fn(() => {
-		return y.select((v) => v) + 1;
-	});
+	const y_plus_1_cb = vi.fn(() => y.get() + 1);
 	const y_plus_1 = compute(y_plus_1_cb);
 
 	const x_plus_1_plus_y_plus_1 = compute(() => {
@@ -27,7 +23,7 @@ test("Batch update should trigger the effect __only__ once", () => {
 	let value: number | undefined;
 
 	const effect_cb = vi.fn(() => {
-		value = x_plus_1_plus_y_plus_1({ key: 'a' }).get();
+		value = x_plus_1_plus_y_plus_1().get();
 	});
 	effect(effect_cb);
 	expect(value).toBe(12);

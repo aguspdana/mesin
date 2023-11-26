@@ -13,25 +13,23 @@ export function useStore<T extends NotPromise<unknown>>(store: Store<T> | Comput
 	const [, setCount] = useState(0);
 	const store_ref = useRef<Store<T> | Computed<Param, T> | Query<Param, T>>();
 	const value_ref = useRef<T | QueryState<T>>();
+	const dispose_ref = useRef<() => void>();
 
 	if (store !== store_ref.current) {
 		store_ref.current = store;
 		value_ref.current = store.get();
-	}
-
-	useEffect(() => {
 		let should_update = false;
-		const dispose = effect(() => {
+		dispose_ref.current = effect(() => {
 			const value = store.get();
+			value_ref.current = value;
 			if (should_update && value_ref.current !== value) {
-				value_ref.current = value;
 				setCount((c) => c + 1);
 			}
 		});
 		should_update = true;
+	}
 
-		return () => dispose();
-	}, [store]);
+	useEffect(() => dispose_ref.current, [store]);
 
 	return value_ref.current;
 }

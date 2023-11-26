@@ -9,18 +9,19 @@ export function effect(cb: () => void) {
 		dependencies.push(dependency);
 	}
 
-	function update() {
+	function run() {
 		if (clock === MANAGER.clock) {
 			return;
 		}
 		clock = MANAGER.clock;
-		dependencies.forEach(({ unsubscribe }) => unsubscribe());
+		const prev_dependencies = dependencies;
 		dependencies = [];
 		const value = MANAGER.compute(
 			undefined,
 			cb,
-			{ add_dependency, notify: update },
+			{ add_dependency, notify: run },
 		);
+		prev_dependencies.forEach(({ unsubscribe }) => unsubscribe());
 		return value;
 	}
 
@@ -28,7 +29,7 @@ export function effect(cb: () => void) {
 		dependencies.forEach((d) => d.unsubscribe());
 	}
 
-	update();
+	run();
 
 	return dispose;
 }

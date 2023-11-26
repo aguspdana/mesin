@@ -26,7 +26,7 @@ const user = query((n: number): Promise<{ name: string; age: number }> => {
         resolve(user);
       }
       reject(new Error("User not found"));
-    }, 3000);
+    }, 1000);
   });
 });
 

@@ -1,8 +1,9 @@
 import { expect, test, vi } from 'vitest';
-import { compute } from "./computed";
+import { REMOVE_FROM_REGISTRY_AFTER, compute } from "./computed";
 import { effect } from "./effect";
 import { store } from "./store";
 import { batch } from '.';
+import { sleep } from './utils';
 
 test("Should update the computed store when the selected dependency changes", () => {
 	const store_1 = store({ a: 0, b: 10 });
@@ -81,7 +82,7 @@ test("Should throw an error when circular dependency is detected", () => {
 	expect(x().get()).toBe(0);
 });
 
-test("Should not trigger false circular dependency error", () => {
+test("Should __not__ trigger false circular dependency error", () => {
 	const a = store(1);
 	const b = store(2);
 	const c = compute(() => a.get());
@@ -96,4 +97,86 @@ test("Should not trigger false circular dependency error", () => {
 		a.set(4);
 	});
 	expect(current_e).toBe(11);
+});
+
+test("Should unsubscribe dependencies when no subscriber left", () => {
+	const a = store(1);
+	const b_cb = vi.fn(() => a.get());
+	const b = compute(b_cb);
+	const c_cb = vi.fn(() => b().get());
+	const c = compute(c_cb);
+	const dispose = effect(() => c().get());
+	dispose();
+	a.set(2);
+	expect(b_cb).toBeCalledTimes(1);
+	expect(c_cb).toBeCalledTimes(1);
+});
+
+test("When there is no effect in the dependency chain, and there are multiple updates on the writable store before the computed stores are removed from the register, they should be recomputed __only__ once", () => {
+	const a = store(1);
+	const b_cb = vi.fn(() => a.get());
+	const b = compute(b_cb);
+	const c_cb = vi.fn(() => b().get());
+	const c = compute(c_cb);
+	const d_cb = vi.fn(() => c().get());
+	const d = compute(d_cb);
+	d().get();
+	a.set(2);
+	a.set(3);
+	expect(b_cb).toBeCalledTimes(2);
+	expect(c_cb).toBeCalledTimes(2);
+	expect(d_cb).toBeCalledTimes(1);
+});
+
+test("After the computed stores are removed from the registry, they should not be updated", async () => {
+	const a = store(1);
+	const b_cb = vi.fn(() => a.get());
+	const b = compute(b_cb);
+	const c_cb = vi.fn(() => b().get());
+	const c = compute(c_cb);
+	const d_cb = vi.fn(() => c().get());
+	const d = compute(d_cb);
+	d().get();
+	await sleep(REMOVE_FROM_REGISTRY_AFTER + 5);
+	a.set(2);
+	a.set(3);
+	expect(b_cb).toBeCalledTimes(1);
+	expect(c_cb).toBeCalledTimes(1);
+	expect(d_cb).toBeCalledTimes(1);
+});
+
+test("After the computed stores are removed from the registry, they should be reactive after being subscribed again", async () => {
+	const a = store(1);
+	const b_cb = vi.fn(() => a.get());
+	const b = compute(b_cb);
+	const c_cb = vi.fn(() => b().get());
+	const c = compute(c_cb);
+	const d_cb = vi.fn(() => c().get());
+	const d = compute(d_cb);
+	const _d = d();
+	_d.get();
+	await sleep(REMOVE_FROM_REGISTRY_AFTER + 5);
+	effect(() => _d.get());
+	a.set(2);
+	a.set(3);
+	expect(b_cb).toBeCalledTimes(4);
+	expect(c_cb).toBeCalledTimes(4);
+	expect(d_cb).toBeCalledTimes(4);
+});
+
+test("The computed store that is computed without being subscribed to should be reactive after being subscribed to", () => {
+	const a = store(1);
+	const b_cb = vi.fn(() => a.get());
+	const b = compute(b_cb);
+	const c_cb = vi.fn(() => b().get());
+	const c = compute(c_cb);
+	c().get();
+	let value: number | undefined;
+	effect(() => {
+		value = c().get();
+	});
+	a.set(2);
+	expect(value).toBe(2);
+	expect(b_cb).toBeCalledTimes(2);
+	expect(c_cb).toBeCalledTimes(2);
 });
