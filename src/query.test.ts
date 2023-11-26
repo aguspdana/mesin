@@ -134,3 +134,24 @@ test('The query should be destroyed after not subscribed for `delete_after` mill
 	await sleep(15);
 	expect(count().get()).toMatchObject({ status: 'finished', value: 5 });
 })
+
+test("Should not update query when it has no subscriber", async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(2);
+			source += 2;
+			return source;
+		},
+		{
+			update_every: 5,
+			remove_after: 25,
+		}
+	);
+
+	expect(count().get()).toMatchObject({ status: 'pending' });
+	await sleep(3);
+	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+	await sleep(15);
+	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+});

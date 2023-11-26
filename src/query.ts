@@ -19,12 +19,11 @@ export class Query<P extends Param, T> {
 			this.subscribers_count = count;
 			if (count === 0) {
 				this.schedule_removal();
-				// TODO: If subscribers count is 0 for awhile maybe cancel scheduled update.
 				return;
 			}
-			this.cancel_removal();
-			const isStale = Date.now() - this.last_update > this.options.update_every;
-			if (isStale && !this.is_loading) {
+			this.cancel_removal?.();
+			const is_stale = Date.now() - this.last_update_ts > this.options.update_every;
+			if (is_stale && !this.is_loading) {
 				this.load();
 			}
 		}
@@ -32,7 +31,7 @@ export class Query<P extends Param, T> {
 	private options: QueryOptions;
 	private cancel_removal: (() => void) | null = null;
 	private cancel_update: (() => void) | null = null;
-	private last_update = Date.now();
+	private last_update_ts = Date.now();
 	private first_load = false;
 	private is_loading = false;
 	private load_id = 0;
@@ -51,7 +50,6 @@ export class Query<P extends Param, T> {
 	}
 
 	get() {
-		// TODO: Schedule for update if there's no subscriber and it's not scheduled. 
 		if (!this.first_load) {
 			this.load();
 		}
@@ -79,24 +77,35 @@ export class Query<P extends Param, T> {
 		}
 
 		this.is_loading = false;
-		this.last_update = Date.now();
+		this.last_update_ts = Date.now();
 		this.schedule_update();
 	}
 
 	private schedule_removal(duration = this.options.remove_after) {
 		if (this.cancel_removal === null) {
-			this.cancel_removal = schedule(this.remove_from_registry.bind(this), duration);
+			const cancel = schedule(this.remove_from_registry.bind(this), duration);
+			this.cancel_removal = () => {
+				cancel();
+				this.cancel_removal = null;
+			};
 		}
 	}
 
 	private schedule_update() {
 		if (this.subscribers_count !== 0 && this.cancel_update === null) {
-			this.cancel_update = schedule(this.load.bind(this), this.options.update_every);
+			const cancel = schedule(() => {
+				if (this.subscribers_count !== 0) {
+					this.load();
+				}
+			}, this.options.update_every);
+			this.cancel_update = () => {
+				cancel();
+				this.cancel_update = null;
+			};
 		}
 	}
 
 	select<V>(selector: Selector<QueryState<T>, V>): V {
-		// TODO: Schedule for update if there's no subscriber and it's not scheduled. 
 		if (!this.first_load) {
 			this.load();
 		}
@@ -110,7 +119,7 @@ export class Query<P extends Param, T> {
 		this.store.set({ status: 'finished', value });
 
 		this.is_loading = false;
-		this.last_update = Date.now();
+		this.last_update_ts = Date.now();
 		this.schedule_update();
 	}
 }
