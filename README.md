@@ -314,34 +314,61 @@ batch(() => {
 
 ## Mesin VS Jotai
 
-Jotai has `atomFamily` that can accept a parameter. If you use a non-primitive parameter, the reference must be stable, otherwise it always gets cache-miss. Mesin's computed store is similar to Jotai's `atomFamily`. It can accept any value that can be serialized into a string and it doesn't have to have the same reference.
+I love Jotai. It’s an improvement over Zustand, which I also loved. But it has some flaws which inspired me to create Mesin.
 
-Jotai's `atomFamily` by default has a memory-leak problem. To avoid it, you need to remove the atoms from the cache manually based only on the parameter and the creation time. Mesin automatically remove unsubscribed computed store from the cache. Thus you won't get memory leak.
-
-Jotai's computed atom can be asynchronous and it could introduce race conditions. Asynchronous atoms also tend to be stale.
+### Atom family
 
 ```typescript
-const a = atom(1);
-const b = atom(async (get) => {
-    return new Promise((resolve) => {
-        setTimeout(() => resolve(get(a) + 1), 1000);
-    });
-});
-// Increment a, and you may get this combination for awhile
-// a = 2
-// b = 2
+const filteredPostsAtom = atomFamily((param: { category: string; author: string }) => atom((get) => { ... }));
 ```
 
-Usually what forced developers to create async atoms with Jotai is because they fetch data from the internet in the atom. This could waste the api server's resources because the atoms may be recomputed many times and thus make the same request many times.
+The good thing about atom family is that it caches the value. If we’re using the same atom family with the same parameter, it will be computed only once. But atom family has a memory leak issue. It creates an atom for every parameter we use and stores them in a map. The unused atoms never get removed from the map. Thus the map only grows as the application uses the atom family with different parameters.
 
-Mesin doesn't allow asynchronous computed store. All of the async parts must be extracted into queries.
+We can remove the cache item manually based on the creation timestamp, but we don’t know which one is being used or not. We can remove the cache item manually based on the creation timestamp, but we don’t know which one is being used or not.
 
-## Mesin VS Recoil
+The parameters are used as the keys for the map. If we're using object parameters, they usually have different object references. Thus it never gets the value from the cache, instead, it creates a new atom each time we use it
 
-Mesin has much simpler API than Recoil. Also Recoil is no longer maintained.
+Jotai provides a workaround for this issue by allowing us to use a custom deep equal function to compare the parameter with the cache keys. The problem with this is that it runs the deep equal function for every cache key, or until it finds a match.
 
-From the user point of view Jotai and Recoil are pretty similar. So some of the comparison with Jotai also apply to Recoil.
+Mesin serializes the computed store parameters with a fast serializer. So we can use object parameters without scanning the cache keys.
 
-## Mesin VS Preact's Signal
+### Atom generator
 
-Preact's signal doesn't have parameterized computed signal while Mesin does.
+```typescript
+const filteredPostsAtom = (category: string, author: string) => atom((get) => { ... })
+```
+
+With atom generator, we don’t have a memory leak issue because after it’s not being used (referenced) it’s automatically garbage-collected by the Javascript runtime. But we don’t get the benefit of using cache because every time we call filteredPostsAtom() it generates a new atom. Thus if we use filteredPostsAtom with the same parameter in multiple places (components or other computed atoms), Jotai will recompute the value multiple times.
+
+### Async vs sync
+
+Jotai supports async atoms. Most of the time we create an async atom because it (or its dependency) fetches some data. Often it also has dependencies. Every time the dependencies change we may end up fetching the same data.
+
+Mesin has a query store that is meant for data fetching or other async stuff. I aspire to add some features of react query into it but without dealing with keys. Computed stores that depend on a query are still synchronous, thus they work more predictably. While Jotai’s async atoms may suffer from race conditions. For example, the previous computation may still run and add new dependencies.
+
+### Circular dependency
+
+The benefit of using an atomic state management system is that the dependency chain is dynamic. But it can create a dependency cycle. For example, in a spreadsheet application users may create a formula in column “A1” that references column “A2” (`=SUM(A2,A3)`). While at the same time column “A2” is computed from column “A1” (`=MAX(A1,A3)`).
+
+With Jotai we may end up with infinite recursion until the application crashes. On the other hand, Mesin throws an error when it detects a dependency cycle. We only need to catch this error in computed stores that potentially create a dependency cycle.
+
+### Centralized store vs decentralized store
+
+We can think of Jotai’s atom as a key to value in a centralized store. The synchronization is done by the store. So if we want to use or set an atom value outside of the React lifecycle, we have to use the store API.
+
+```typescript
+const myStore = createStore();
+myStore.get(filteredPostsAtom);
+```
+
+Mesin’s stores manage the data directly. It has a manager that synchronizes the updates. But it’s an implementation detail that users don’t need to deal with. So we can get the value of a store outside of React components directly from the store itself.
+
+```typescript
+filteredPosts.get();
+```
+
+### Signal vs getter function
+
+Mesin automatically detects subscriptions using signal. So getting a store value from outside of the reactive block, e.g. in a `setTimout` callback, won’t add that store as a dependency for that computed store or effect.
+
+Jotai uses a getter function to get the value and subscribe to an atom. We can pass it to a `setTimeout` callback or an async function and it will add the atom that is called with as a dependency even after the computed atom has finished.
