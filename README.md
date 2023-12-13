@@ -4,12 +4,12 @@
 
 What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? That's Mesin.
 
-- Atomic state with dynamic dependencies like spreadsheet's state.
+- Build complex states with dynamic dependencies like spreadsheet's state.
 - Track dependencies using signal like SolidJS.
-- Atoms used in multiple places are computed only once.
+- Computed stores used in multiple places are computed only once.
 - No memory leak.
 - Circular dependency can be handled.
-- All the goodies of React Query.
+- Dedupe and revalidate queries like React Query\* but without dealing with keys.
 
 [**CodeSandbox**](https://codesandbox.io/p/sandbox/mesin-24nhch)
 
@@ -324,7 +324,7 @@ const filteredPostsAtom = atomFamily((param: { category: string; author: string 
 
 The good thing about atom family is that it caches the value. If we’re using the same atom family with the same parameter, it will be computed only once. But atom family has a memory leak issue. It creates an atom for every parameter we use and stores them in a map. The unused atoms never get removed from the map. Thus the map only grows as the application uses the atom family with different parameters.
 
-We can remove the cache item manually based on the creation timestamp, but we don’t know which one is being used or not. We can remove the cache item manually based on the creation timestamp, but we don’t know which one is being used or not.
+We can remove the cache items manually based on the creation timestamp, but we don’t know which one is no longer being used.
 
 The parameters are used as the keys for the map. If we're using object parameters, they usually have different object references. Thus it never gets the value from the cache, instead, it creates a new atom each time we use it
 
@@ -338,7 +338,7 @@ Mesin serializes the computed store parameters with a fast serializer. So we can
 const filteredPostsAtom = (category: string, author: string) => atom((get) => { ... })
 ```
 
-With atom generator, we don’t have a memory leak issue because after it’s not being used (referenced) it’s automatically garbage-collected by the Javascript runtime. But we don’t get the benefit of using cache because every time we call filteredPostsAtom() it generates a new atom. Thus if we use filteredPostsAtom with the same parameter in multiple places (components or other computed atoms), Jotai will recompute the value multiple times.
+With atom generator, we don’t have a memory leak issue because after it’s not being used (referenced) it’s automatically garbage-collected by the Javascript runtime. But we don’t get the benefit of using cache because every time we call `filteredPostsAtom()` it generates a new atom. Thus if we use `filteredPostsAtom` with the same parameter in multiple places (components or other computed atoms), Jotai will recompute the value multiple times.
 
 ### Async vs sync
 
@@ -371,4 +371,4 @@ filteredPosts.get();
 
 Mesin automatically detects subscriptions using signal. So getting a store value from outside of the reactive block, e.g. in a `setTimout` callback, won’t add that store as a dependency for that computed store or effect.
 
-Jotai uses a getter function to get the value and subscribe to an atom. We can pass it to a `setTimeout` callback or an async function and it will add the atom that is called with as a dependency even after the computed atom has finished.
+Jotai uses a getter function to get the value and subscribe to an atom. We can pass it to a `setTimeout` callback or an async function and it will add the atom that is called with as a dependency even after the computed atom has resolved.
