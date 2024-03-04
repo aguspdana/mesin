@@ -34,16 +34,16 @@ export type NotifyFn = () => void;
 export type UpdateFn = () => NotifyFn;
 
 export interface QueryPending {
-	status: 'pending';
+	status: "pending";
 }
 
 export interface QueryError {
-	status: 'error';
+	status: "error";
 	error: unknown;
 }
 
 export interface QueryFinished<T> {
-	status: 'finished';
+	status: "finished";
 	value: T;
 }
 
@@ -51,12 +51,12 @@ export type QueryState<T> = QueryPending | QueryError | QueryFinished<T>;
 
 export interface QueryOptions {
 	/**
-	 * Update the store every `n` milliseconds when there's a subscriber.
+	 * Update the store every `n` milliseconds when there"s a subscriber.
 	 */
 	update_every: number;
 	/**
-	 * Delete the query from the cache after there's no subscriber for `n` milliseconds.
-	 * When it's used again it will be in "pending" state.
+	 * Delete the query from the cache after there"s no subscriber for `n` milliseconds.
+	 * When it"s used again it will be in "pending" state.
 	 */
 	remove_after: number;
 }

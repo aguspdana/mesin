@@ -135,7 +135,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
 	select<V>(selector: Selector<T, V>): V {
 		if (this.is_computing) {
-			throw new CircularDependencyError('Circular dependency detected');
+			throw new CircularDependencyError("Circular dependency detected");
 		}
 		const { value } = this.get_cache_or_compute();
 		const selected = selector(value);

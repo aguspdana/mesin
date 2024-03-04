@@ -1,7 +1,7 @@
-import { expect, test, vi } from 'vitest';
+import { expect, test, vi } from "vitest";
 import { compute } from "./computed";
 import { effect } from "./effect";
-import { batch } from './manager';
+import { batch } from "./manager";
 import { store } from "./store";
 
 test("Batch update should trigger the effect __only__ once", () => {

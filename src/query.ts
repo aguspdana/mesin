@@ -14,7 +14,7 @@ export class Query<P extends Param, T> {
 	private loader: (param: P) => Promise<T>;
 	private remove_from_registry: () => void;
 	private store = new Store<QueryState<T>>(
-		{ status: 'pending' },
+		{ status: "pending" },
 		(count) => {
 			this.subscribers_count = count;
 			if (count === 0) {
@@ -68,12 +68,12 @@ export class Query<P extends Param, T> {
 			if (this.load_id !== load_id) {
 				return;
 			}
-			this.store.set({ status: 'finished', value });
+			this.store.set({ status: "finished", value });
 		} catch (error) {
 			if (this.load_id !== load_id) {
 				return;
 			}
-			this.store.set({ status: 'error', error });
+			this.store.set({ status: "error", error });
 		}
 
 		this.is_loading = false;
@@ -82,7 +82,7 @@ export class Query<P extends Param, T> {
 	}
 
 	reset() {
-		this.store.set({ status: 'pending' });
+		this.store.set({ status: "pending" });
 		this.first_load = false;
 		if (this.subscribers_count > 0) {
 			this.load();
@@ -124,7 +124,7 @@ export class Query<P extends Param, T> {
 		// Invalidate pending fetch.
 		this.load_id += 1;
 
-		this.store.set({ status: 'finished', value });
+		this.store.set({ status: "finished", value });
 
 		this.is_loading = false;
 		this.last_update_ts = Date.now();

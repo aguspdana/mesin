@@ -1,10 +1,10 @@
-import { expect, test, vi } from 'vitest';
+import { expect, test, vi } from "vitest";
 import { effect } from "./effect";
-import { query } from './query';
-import { QueryState } from './types';
-import { sleep } from './utils';
+import { query } from "./query";
+import { QueryState } from "./types";
+import { sleep } from "./utils";
 
-test('Query state should be in "finished" state after the initial fetch resolved', async() => {
+test("Query state should be in finished state after the initial fetch resolved", async() => {
 	const count = query(
 		async () => {
 			await sleep(10);
@@ -21,19 +21,19 @@ test('Query state should be in "finished" state after the initial fetch resolved
 		state = count().get();
 	});
 	effect(effect_cb);
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 
 	await sleep(20);
-	expect(state).toMatchObject({ status: 'finished', value: 1 });
+	expect(state).toMatchObject({ status: "finished", value: 1 });
 
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 });
 
-test('Query should be in "error" state after the fetcher throws an error', async () => {
+test("Query should be in error state after the fetcher throws an error", async () => {
 	const count = query(
 		async () => {
 			await sleep(10);
-			throw 'Ops';
+			throw "Ops";
 		},
 		{
 			update_every: 10,
@@ -46,15 +46,15 @@ test('Query should be in "error" state after the fetcher throws an error', async
 		state = count().get();
 	});
 	effect(effect_cb);
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 
 	await sleep(20);
-	expect(state).toMatchObject({ status: 'error', error: 'Ops' });
+	expect(state).toMatchObject({ status: "error", error: "Ops" });
 
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 })
 
-test('Should update every n milliseconds', async () => {
+test("Should update every n milliseconds", async () => {
 	let source = 1;
 	const count = query(
 		async () => {
@@ -73,15 +73,15 @@ test('Should update every n milliseconds', async () => {
 		state = count().get();
 	});
 	effect(effect_cb);
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 	await sleep(15);
-	expect(state).toMatchObject({ status: 'finished', value: 3 });
+	expect(state).toMatchObject({ status: "finished", value: 3 });
 	await sleep(20);
-	expect(state).toMatchObject({ status: 'finished', value: 5 });
+	expect(state).toMatchObject({ status: "finished", value: 5 });
 	expect(effect_cb).toHaveBeenCalledTimes(3);
 })
 
-test('Setting the query value should invalidate ongoing fetching and then update after `update_every` milliseconds', async () => {
+test("Setting the query value should invalidate ongoing fetching and then update after `update_every` milliseconds", async () => {
 	let source = 1;
 	const count = query(
 		async () => {
@@ -100,16 +100,16 @@ test('Setting the query value should invalidate ongoing fetching and then update
 		state = count().get();
 	});
 	effect(effect_cb);
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 	await sleep(5);
 	count().set(2);
-	expect(state).toMatchObject({ status: 'finished', value: 2 });
+	expect(state).toMatchObject({ status: "finished", value: 2 });
 	await sleep(25);
-	expect(state).toMatchObject({ status: 'finished', value: 5 });
+	expect(state).toMatchObject({ status: "finished", value: 5 });
 	expect(effect_cb).toHaveBeenCalledTimes(3);
 })
 
-test('The query should be destroyed after not subscribed for `delete_after` milliseconds', async () => {
+test("The query should be destroyed after not subscribed for `delete_after` milliseconds", async () => {
 	let source = 1;
 	const count = query(
 		async () => {
@@ -123,13 +123,13 @@ test('The query should be destroyed after not subscribed for `delete_after` mill
 		}
 	);
 
-	expect(count().get()).toMatchObject({ status: 'pending' });
+	expect(count().get()).toMatchObject({ status: "pending" });
 	await sleep(15);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 3 });
 	await sleep(20);
-	expect(count().get()).toMatchObject({ status: 'pending' });
+	expect(count().get()).toMatchObject({ status: "pending" });
 	await sleep(15);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 5 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 5 });
 })
 
 test("Should not update query when it has no subscriber", async () => {
@@ -146,11 +146,11 @@ test("Should not update query when it has no subscriber", async () => {
 		}
 	);
 
-	expect(count().get()).toMatchObject({ status: 'pending' });
+	expect(count().get()).toMatchObject({ status: "pending" });
 	await sleep(3);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 3 });
 	await sleep(15);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 3 });
 });
 
 test("Should reset and load immediately when there is a subscriber", async () => {
@@ -173,13 +173,13 @@ test("Should reset and load immediately when there is a subscriber", async () =>
 		state = count().get();
 	});
 
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 	await sleep(3);
-	expect(state).toMatchObject({ status: 'finished', value: 2 });
+	expect(state).toMatchObject({ status: "finished", value: 2 });
 	count().reset();
-	expect(state).toMatchObject({ status: 'pending' });
+	expect(state).toMatchObject({ status: "pending" });
 	await sleep(3);
-	expect(state).toMatchObject({ status: 'finished', value: 3 });
+	expect(state).toMatchObject({ status: "finished", value: 3 });
 });
 
 test("Should reset and load after there is a new subscriber", async () => {
@@ -196,12 +196,12 @@ test("Should reset and load after there is a new subscriber", async () => {
 		}
 	);
 
-	expect(count().get()).toMatchObject({ status: 'pending' });
+	expect(count().get()).toMatchObject({ status: "pending" });
 	await sleep(3);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 2 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 2 });
 	count().reset();
 	await sleep(3);
-	expect(count().get()).toMatchObject({ status: 'pending' });
+	expect(count().get()).toMatchObject({ status: "pending" });
 	await sleep(3);
-	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+	expect(count().get()).toMatchObject({ status: "finished", value: 3 });
 });

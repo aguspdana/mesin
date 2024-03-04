@@ -1,14 +1,14 @@
-import { expect, test, vi } from 'vitest';
+import { expect, test, vi } from "vitest";
 import { REMOVE_FROM_REGISTRY_AFTER, compute } from "./computed";
 import { effect } from "./effect";
 import { store } from "./store";
-import { batch } from '.';
-import { sleep } from './utils';
+import { batch } from ".";
+import { sleep } from "./utils";
 
 test("Should update the computed store when the selected dependency changes", () => {
 	const store_1 = store({ a: 0, b: 10 });
 
-	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
+	const x_plus_1_cb = vi.fn(({ key }: { key: "a" | "b" }) => {
 		return store_1.select((v) => v[key]) + 1;
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
@@ -16,7 +16,7 @@ test("Should update the computed store when the selected dependency changes", ()
 	let value: number | undefined;
 
 	const effect_cb = vi.fn(() => {
-		value = x_plus_1({ key: 'a' }).get();
+		value = x_plus_1({ key: "a" }).get();
 	});
 	effect(() => effect_cb());
 	expect(value).toBe(1);
@@ -28,10 +28,10 @@ test("Should update the computed store when the selected dependency changes", ()
 	expect(effect_cb).toHaveBeenCalledTimes(2);
 });
 
-test("Should __not__ update the computed store when the selected dependency __doesn't__ change", () => {
+test("Should __not__ update the computed store when the selected dependency __does not__ change", () => {
 	const store_1 = store({ a: 0, b: 10 });
 
-	const x_plus_1_cb = vi.fn(({ key }: { key: 'a' | 'b' }) => {
+	const x_plus_1_cb = vi.fn(({ key }: { key: "a" | "b" }) => {
 		return store_1.select((v) => v[key]) + 1;
 	});
 	const x_plus_1 = compute(x_plus_1_cb);
@@ -39,7 +39,7 @@ test("Should __not__ update the computed store when the selected dependency __do
 	let value: number | undefined;
 
 	const effect_cb = vi.fn(() => {
-		value = x_plus_1({ key: 'a' }).get();
+		value = x_plus_1({ key: "a" }).get();
 	});
 	effect(effect_cb);
 	expect(value).toBe(1);

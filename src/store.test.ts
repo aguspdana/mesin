@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest';
+import { expect, test, vi } from "vitest";
 import { effect } from "./effect";
 import { store } from "./store";
 

@@ -23,13 +23,13 @@ npm install mesin
 
 ```typescript
 const users = store({
-    'user-1': {
-        name: 'Foo',
-        friends: ['user-2'],
+    "user-1": {
+        name: "Foo",
+        friends: ["user-2"],
     },
-    'user-2': {
-        name: 'Bar',
-        friends: ['user-1'],
+    "user-2": {
+        name: "Bar",
+        friends: ["user-1"],
     },
 });
 
@@ -73,8 +73,8 @@ A writable primitive store.
 
 ```typescript
 const users = store({
-    'user-1': {
-        name: 'Foo',
+    "user-1": {
+        name: "Foo",
         date_of_birth: 2000,
     },
     ...
@@ -195,29 +195,29 @@ effect(() => {
     // This function is called every time users and orders change.
     const all_users = users.get();
     const all_orders = orders.get();
-    console.log('users', all_users);
-    console.log('orders', all_orders);
+    console.log("users", all_users);
+    console.log("orders", all_orders);
 });
 ```
 
 `effect` can be used to sync a store with an external store, e.g local storage.
 
 ```typescript
-const stored_settings = localStorage.getItem('settings');
+const stored_settings = localStorage.getItem("settings");
 const init_settings = stored_settings
     ? JSON.parse(stored_settings)
     : DEFAULT_SETTINGS;
 const settings = store(init_settings);
 let last_value_from_storage = init_settings;
 
-addEventListener('storage', (e) => {
-    if (e.key === 'settings' && e.newValue) {
+addEventListener("storage", (e) => {
+    if (e.key === "settings" && e.newValue) {
         try {
             const new_value = JSON.parse(e.newValue);
             settings.set(new_value);
         } catch {
             const current = settings.get();
-            localStorage.setItem('settings', JSON.stringify(current));
+            localStorage.setItem("settings", JSON.stringify(current));
         }
     }
 });
@@ -225,7 +225,7 @@ addEventListener('storage', (e) => {
 effect(() => {
     const current = settings.get();
     if (current !== last_value_from_storage) {
-        localStorage.setItem('settings', JSON.stringify(current));
+        localStorage.setItem("settings", JSON.stringify(current));
     }
 });
 ```
@@ -244,16 +244,16 @@ A query can be in one of these three states:
 
 ```typescript
 export interface QueryPending {
-    status: 'pending';
+    status: "pending";
 }
 
 export interface QueryError {
-    status: 'error';
+    status: "error";
     error: unknown;
 }
 
 export interface QueryFinished<T> {
-    status: 'finished';
+    status: "finished";
     value: T;
 }
 
@@ -265,15 +265,15 @@ A query is updated every `opts.update_every` milliseconds when it has at least o
 A query value can be set manually:
 
 ```typescript
-user('user-1').set({
-    name: 'Foo',
+user("user-1").set({
+    name: "Foo",
 });
 ```
 
 A query can be refreshed manually:
 
 ```typescript
-user('user-1').load();
+user("user-1").load();
 ```
 
 ## `batch(cb: () => void)`

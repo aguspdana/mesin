@@ -1,4 +1,4 @@
-import type { Param } from './types';
+import type { Param } from "./types";
 
 /**
  * Create a stable string from `Param`.  The returned string may not be parsed
@@ -6,34 +6,34 @@ import type { Param } from './types';
  */
 export function stringify(input: Param): string {
 	if (input === undefined) {
-		return '_';
+		return "_";
 	}
 
 	if (input === null) {
-		return '*';
+		return "*";
 	}
 
 	if (input === true) {
-		return 'T';
+		return "T";
 	}
 
 	if (input === false) {
-		return 'F';
+		return "F";
 	}
 
-	if (typeof input === 'number') {
+	if (typeof input === "number") {
 		return `${input}`;
 	}
 
-	if (typeof input === 'string') {
-		return `~${input.replace('~', '~~')}~`;
+	if (typeof input === "string") {
+		return `~${input.replace("~", "~~")}~`;
 	}
 
 	if (Array.isArray(input)) {
-		return `[${input.map((i) => stringify(i)).join(',')}]`
+		return `[${input.map((i) => stringify(i)).join(",")}]`
 	}
 
-	if (typeof input === 'object') {
+	if (typeof input === "object") {
 		const keys = Object.keys(input).sort();
 		const props: string[] = [];
 
@@ -47,8 +47,8 @@ export function stringify(input: Param): string {
 			}
 		}
 
-		return `{${props.join(',')}}`;
+		return `{${props.join(",")}}`;
 	}
 
-	return '';
+	return "";
 }

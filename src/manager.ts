@@ -34,7 +34,7 @@ export class Manager {
 	}
 
 	/**
-	 * Call `notify()` after the current context is finished or immediately if there's no context.
+	 * Call `notify()` after the current context is finished or immediately if there is no context.
 	 */
 	notify_next(notify: () => void) {
 		if (this.contexts.length !== 0) {
@@ -45,7 +45,7 @@ export class Manager {
 	}
 
 	/**
-	 * Run batch update if there's no context.
+	 * Run batch update if there is no context.
 	 */
 	private maybe_run_batch() {
 		if (!this.pending_updates || this.contexts.length !== 0) {
