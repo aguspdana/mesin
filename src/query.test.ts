@@ -152,3 +152,56 @@ test("Should not update query when it has no subscriber", async () => {
 	await sleep(15);
 	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
 });
+
+test("Should reset and load immediately when there is a subscriber", async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(2);
+			source += 1;
+			return source;
+		},
+		{
+			update_every: 5,
+			remove_after: 25,
+		}
+	);
+
+	let state: QueryState<number>;
+
+	effect(() => {
+		state = count().get();
+	});
+
+	expect(state).toMatchObject({ status: 'pending' });
+	await sleep(3);
+	expect(state).toMatchObject({ status: 'finished', value: 2 });
+	count().reset();
+	expect(state).toMatchObject({ status: 'pending' });
+	await sleep(3);
+	expect(state).toMatchObject({ status: 'finished', value: 3 });
+});
+
+test("Should reset and load after there is a new subscriber", async () => {
+	let source = 1;
+	const count = query(
+		async () => {
+			await sleep(2);
+			source += 1;
+			return source;
+		},
+		{
+			update_every: 5,
+			remove_after: 25,
+		}
+	);
+
+	expect(count().get()).toMatchObject({ status: 'pending' });
+	await sleep(3);
+	expect(count().get()).toMatchObject({ status: 'finished', value: 2 });
+	count().reset();
+	await sleep(3);
+	expect(count().get()).toMatchObject({ status: 'pending' });
+	await sleep(3);
+	expect(count().get()).toMatchObject({ status: 'finished', value: 3 });
+});

@@ -81,6 +81,14 @@ export class Query<P extends Param, T> {
 		this.schedule_update();
 	}
 
+	reset() {
+		this.store.set({ status: 'pending' });
+		this.first_load = false;
+		if (this.subscribers_count > 0) {
+			this.load();
+		}
+	}
+
 	private schedule_removal(duration = this.options.remove_after) {
 		if (this.cancel_removal === null) {
 			const cancel = schedule(this.remove_from_registry.bind(this), duration);
