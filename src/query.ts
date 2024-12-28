@@ -63,6 +63,14 @@ export class Query<P extends Param, T> {
         }
     }
 
+    init(value: T): Query<P, T> {
+        if (this.store.get().status === "pending") {
+            this.store.set({ status: "finished", value });
+            this.last_update_ts = Date.now();
+        }
+        return this;
+    }
+
     async load() {
         this.cancel_update?.();
         this.is_loading = true;
@@ -132,16 +140,12 @@ export class Query<P extends Param, T> {
         return value;
     }
 
-    set(value: T): Query<P, T> {
+    set(value: T) {
         // Invalidate pending fetch.
         this.load_id += 1;
-
         this.store.set({ status: "finished", value });
-
-        this.is_loading = false;
         this.last_update_ts = Date.now();
         this.schedule_update();
-        return this;
     }
 }
 

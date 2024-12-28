@@ -4,6 +4,30 @@ import { query } from "./query";
 import { QueryState } from "./types";
 import { sleep } from "./utils";
 
+test("Should initialize the value", async () => {
+    const count = query(
+        async () => {
+            await sleep(1);
+            return 1;
+        },
+        {
+            update_every: 5,
+            remove_after: 10,
+            autoload_on_server: true,
+        }
+    );
+
+    count().init(0);
+    await sleep(4);
+    let state: QueryState<number> | null = null;
+    effect(() => {
+        state = count().get();
+    });
+    expect(state).toMatchObject({ status: "finished", value: 0 });
+    await sleep(3);
+    expect(state).toMatchObject({ status: "finished", value: 1 });
+});
+
 test("Query state should be in finished state after the initial fetch resolved", async () => {
     const count = query(
         async () => {
