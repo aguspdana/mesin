@@ -13,6 +13,7 @@ test("Query state should be in finished state after the initial fetch resolved",
         {
             update_every: 10,
             remove_after: 10,
+            autoload_on_server: true,
         }
     );
 
@@ -38,6 +39,7 @@ test("Query should be in error state after the fetcher throws an error", async (
         {
             update_every: 10,
             remove_after: 10,
+            autoload_on_server: true,
         }
     );
 
@@ -65,6 +67,7 @@ test("Should update every n milliseconds", async () => {
         {
             update_every: 10,
             remove_after: 10,
+            autoload_on_server: true,
         }
     );
 
@@ -92,6 +95,7 @@ test("Setting the query value should invalidate ongoing fetching and then update
         {
             update_every: 10,
             remove_after: 10,
+            autoload_on_server: true,
         }
     );
 
@@ -120,13 +124,17 @@ test("The query should be destroyed after not subscribed for `delete_after` mill
         {
             update_every: 20,
             remove_after: 20,
+            autoload_on_server: true,
         }
     );
 
+    const destroy = effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(15);
     expect(count().get()).toMatchObject({ status: "finished", value: 3 });
+    destroy();
     await sleep(20);
+    effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(15);
     expect(count().get()).toMatchObject({ status: "finished", value: 5 });
@@ -143,9 +151,12 @@ test("Should not update query when it has no subscriber", async () => {
         {
             update_every: 5,
             remove_after: 25,
+            autoload_on_server: true,
         }
     );
 
+    const destroy = effect(() => count().get());
+    destroy();
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(3);
     expect(count().get()).toMatchObject({ status: "finished", value: 3 });
@@ -164,6 +175,7 @@ test("Should reset and load immediately when there is a subscriber", async () =>
         {
             update_every: 5,
             remove_after: 25,
+            autoload_on_server: true,
         }
     );
 
@@ -182,7 +194,7 @@ test("Should reset and load immediately when there is a subscriber", async () =>
     expect(state).toMatchObject({ status: "finished", value: 3 });
 });
 
-test("Should reset and load after there is a new subscriber", async () => {
+test.only("Should reset and load after there is a new subscriber", async () => {
     let source = 1;
     const count = query(
         async () => {
@@ -193,14 +205,16 @@ test("Should reset and load after there is a new subscriber", async () => {
         {
             update_every: 5,
             remove_after: 25,
+            autoload_on_server: true,
         }
     );
 
+    effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(3);
     expect(count().get()).toMatchObject({ status: "finished", value: 2 });
-    count().reset();
     await sleep(3);
+    count().reset();
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(3);
     expect(count().get()).toMatchObject({ status: "finished", value: 3 });

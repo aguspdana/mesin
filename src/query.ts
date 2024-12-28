@@ -6,6 +6,7 @@ import { schedule } from "./utils";
 const DEFAULT_QUERY_OPTIONS: QueryOptions = {
     update_every: 5 * 60_000,
     remove_after: 5 * 60_000,
+    autoload_on_server: false,
 };
 
 export class Query<P extends Param, T> {
@@ -20,19 +21,15 @@ export class Query<P extends Param, T> {
             return;
         }
         this.cancel_removal?.();
-        const is_stale =
-            Date.now() - this.last_update_ts > this.options.update_every;
-        if (is_stale && !this.is_loading) {
-            this.load();
-        }
+        this.autoload();
     });
     private options: QueryOptions;
     private cancel_removal: (() => void) | null = null;
     private cancel_update: (() => void) | null = null;
-    private last_update_ts = Date.now();
-    private first_load = false;
     private is_loading = false;
     private load_id = 0;
+    private should_autoload: boolean;
+    private last_update_ts = 0;
 
     constructor(props: {
         param: P;
@@ -45,17 +42,28 @@ export class Query<P extends Param, T> {
         this.remove_from_registry = props.remove_from_registry;
         this.options = props.options;
         this.schedule_removal(this.options.remove_after);
+        this.should_autoload =
+            typeof window !== "undefined" || this.options.autoload_on_server;
     }
 
     get() {
-        if (!this.first_load) {
+        const state = this.store.get();
+        this.autoload();
+        return state;
+    }
+
+    private autoload() {
+        if (
+            this.should_autoload &&
+            !this.is_loading &&
+            !this.cancel_update &&
+            this.subscribers_count > 0
+        ) {
             this.load();
         }
-        return this.store.get();
     }
 
     async load() {
-        this.first_load = true;
         this.cancel_update?.();
         this.is_loading = true;
         this.load_id += 1;
@@ -81,10 +89,8 @@ export class Query<P extends Param, T> {
 
     reset() {
         this.store.set({ status: "pending" });
-        this.first_load = false;
-        if (this.subscribers_count > 0) {
-            this.load();
-        }
+        this.cancel_update?.();
+        this.autoload();
     }
 
     private schedule_removal(duration = this.options.remove_after) {
@@ -101,12 +107,18 @@ export class Query<P extends Param, T> {
     }
 
     private schedule_update() {
-        if (this.subscribers_count !== 0 && this.cancel_update === null) {
+        if (
+            this.should_autoload &&
+            this.subscribers_count !== 0 &&
+            this.cancel_update === null
+        ) {
+            const dt = Date.now() - this.last_update_ts;
+            const duration = Math.max(this.options.update_every - dt, 0);
             const cancel = schedule(() => {
                 if (this.subscribers_count !== 0) {
                     this.load();
                 }
-            }, this.options.update_every);
+            }, duration);
             this.cancel_update = () => {
                 cancel();
                 this.cancel_update = null;
@@ -115,13 +127,12 @@ export class Query<P extends Param, T> {
     }
 
     select<V>(selector: Selector<QueryState<T>, V>): V {
-        if (!this.first_load) {
-            this.load();
-        }
-        return this.store.select(selector);
+        const value = this.store.select(selector);
+        this.autoload();
+        return value;
     }
 
-    set(value: T) {
+    set(value: T): Query<P, T> {
         // Invalidate pending fetch.
         this.load_id += 1;
 
@@ -130,6 +141,7 @@ export class Query<P extends Param, T> {
         this.is_loading = false;
         this.last_update_ts = Date.now();
         this.schedule_update();
+        return this;
     }
 }
 
