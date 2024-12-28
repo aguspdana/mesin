@@ -4,12 +4,12 @@
 
 What if Jotai, Recoil, SolidJS's signal, and React Query are mixed together? That's Mesin.
 
-- Build complex states with dynamic dependencies like spreadsheet's state.
-- Track dependencies using signal like SolidJS.
-- Computed stores used in multiple places are computed only once.
-- No memory leak.
-- Circular dependency can be handled.
-- Dedupe and revalidate queries like React Query\* but without dealing with keys.
+-   Build complex states with dynamic dependencies like spreadsheet's state.
+-   Track dependencies using signal like SolidJS.
+-   Computed stores used in multiple places are computed only once.
+-   No memory leak.
+-   Circular dependency can be handled.
+-   Dedupe and revalidate queries like React Query\* but without dealing with keys.
 
 [**CodeSandbox**](https://codesandbox.io/p/sandbox/mesin-24nhch)
 
@@ -43,7 +43,7 @@ const user_friends = compute((id: string) => {
         user(friend_id).get();
     });
     return friends;
-})
+});
 
 const User = ({ id }: { id: string }) => {
     const current_user = useStore(user(id));
@@ -86,7 +86,7 @@ Get all users:
 ```typescript
 const all_users = computed((id: string) => {
     return users.get();
-})
+});
 ```
 
 Select a user:
@@ -94,7 +94,7 @@ Select a user:
 ```typescript
 const user = computed((id: string) => {
     return users.select((all) => all[id]);
-})
+});
 ```
 
 Note: The select callback should be cheap because it may be called every time there's a data change. The return value is used to check if the selected dependency has changed. Array filter should not be used in the select function because it always returns a different reference.
@@ -180,7 +180,7 @@ const x = compute(() => {
     } catch {
         return 0;
     }
-})
+});
 // x().get() === 0;
 ```
 
@@ -298,7 +298,7 @@ function update() {
     batch(() => {
         store_a.set(1);
         store_b.set(1);
-    })
+    });
 }
 ```
 
@@ -308,8 +308,8 @@ If you call `get()` after `set()`, you'll get the old value because the update i
 batch(() => {
     const a = store_a.get(); // 1
     store_a.set(a + 1);
-    store_a.get();           // Still 1
-})
+    store_a.get(); // Still 1
+});
 ```
 
 ## Mesin VS Jotai
