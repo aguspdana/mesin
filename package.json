@@ -1,6 +1,6 @@
 {
     "name": "mesin",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "An atomic state management system that automatically track dependencies using signals",
     "license": "MIT",
     "author": "Agus Putra Dana",
