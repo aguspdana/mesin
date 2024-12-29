@@ -51,7 +51,7 @@ export class Query<P extends Param, T> {
             props.remove_from_registry();
             if (typeof window !== "undefined") {
                 window.removeEventListener(
-                    "visibilityChange",
+                    "visibilitychange",
                     visibilityChangeHandler
                 );
             }
@@ -63,7 +63,7 @@ export class Query<P extends Param, T> {
 
         if (typeof window !== "undefined") {
             window.addEventListener(
-                "visibilityChange",
+                "visibilitychange",
                 visibilityChangeHandler
             );
         }
