@@ -18,10 +18,11 @@ export class Query<P extends Param, T> {
         this.subscribers_count = count;
         if (count === 0) {
             this.schedule_removal();
+            this.cancel_update?.();
             return;
         }
         this.cancel_removal?.();
-        this.autoload();
+        this.schedule_update();
     });
     private options: QueryOptions;
     private cancel_removal: (() => void) | null = null;
@@ -70,19 +71,7 @@ export class Query<P extends Param, T> {
 
     get() {
         const state = this.store.get();
-        this.autoload();
         return state;
-    }
-
-    private autoload() {
-        if (
-            this.should_autoload &&
-            !this.is_loading &&
-            !this.cancel_update &&
-            this.subscribers_count > 0
-        ) {
-            this.load();
-        }
     }
 
     init(value: T): Query<P, T> {
@@ -99,28 +88,36 @@ export class Query<P extends Param, T> {
         this.load_id += 1;
         const load_id = this.load_id;
 
+        let state: QueryState<T>;
         try {
             const value = await this.loader(this.param);
             if (this.load_id !== load_id) {
                 return;
             }
-            this.store.set({ status: "finished", value });
+            state = { status: "finished", value };
         } catch (error) {
             if (this.load_id !== load_id) {
                 return;
             }
-            this.store.set({ status: "error", error });
+            state = { status: "error", error };
         }
 
         this.is_loading = false;
         this.last_update_ts = Date.now();
-        this.schedule_update();
+        this.store.set(state);
     }
 
     reset() {
         this.store.set({ status: "pending" });
         this.cancel_update?.();
-        this.autoload();
+        this.last_update_ts = 0;
+        if (
+            this.should_autoload &&
+            !this.is_loading &&
+            this.subscribers_count > 0
+        ) {
+            this.load();
+        }
     }
 
     private schedule_removal(duration = this.options.remove_after) {
@@ -137,13 +134,14 @@ export class Query<P extends Param, T> {
         if (
             this.should_autoload &&
             this.subscribers_count !== 0 &&
+            !this.is_loading &&
             this.cancel_update === null &&
             (typeof window === "undefined" || !document.hidden)
         ) {
             const dt = Date.now() - this.last_update_ts;
             const duration = Math.max(this.options.update_every - dt, 0);
             const cancel = schedule(() => {
-                if (this.subscribers_count !== 0) {
+                if (this.subscribers_count !== 0 && !this.is_loading) {
                     this.load();
                 }
             }, duration);
@@ -156,7 +154,6 @@ export class Query<P extends Param, T> {
 
     select<V>(selector: Selector<QueryState<T>, V>): V {
         const value = this.store.select(selector);
-        this.autoload();
         return value;
     }
 
