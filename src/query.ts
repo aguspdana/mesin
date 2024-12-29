@@ -31,13 +31,6 @@ export class Query<P extends Param, T> {
     private load_id = 0;
     private should_autoload: boolean;
     private last_update_ts = 0;
-    private visibilityChangeHandler = () => {
-        if (document.hidden) {
-            this.cancel_update?.();
-        } else {
-            this.schedule_update();
-        }
-    };
 
     constructor(props: {
         param: P;
@@ -45,6 +38,13 @@ export class Query<P extends Param, T> {
         remove_from_registry: () => void;
         options: QueryOptions;
     }) {
+        const visibilityChangeHandler = () => {
+            if (document.hidden) {
+                this.cancel_update?.();
+            } else {
+                this.schedule_update();
+            }
+        };
         this.param = props.param;
         this.loader = props.loader;
         this.remove_from_registry = () => {
@@ -52,7 +52,7 @@ export class Query<P extends Param, T> {
             if (typeof window !== "undefined") {
                 window.removeEventListener(
                     "visibilityChange",
-                    this.visibilityChangeHandler
+                    visibilityChangeHandler
                 );
             }
         };
@@ -64,7 +64,7 @@ export class Query<P extends Param, T> {
         if (typeof window !== "undefined") {
             window.addEventListener(
                 "visibilityChange",
-                this.visibilityChangeHandler
+                visibilityChangeHandler
             );
         }
     }
