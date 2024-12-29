@@ -1,15 +1,15 @@
 import { MANAGER } from "./manager";
 import type { Dependency } from "./types";
 
-export function effect(cb: () => void) {
+export const effect = (cb: () => void) => {
     let dependencies: Dependency[] = [];
     let clock = -1;
 
-    function add_dependency(dependency: Dependency) {
+    const add_dependency = (dependency: Dependency) => {
         dependencies.push(dependency);
-    }
+    };
 
-    function run() {
+    const run = () => {
         if (clock === MANAGER.clock) {
             return;
         }
@@ -22,13 +22,13 @@ export function effect(cb: () => void) {
         });
         prev_dependencies.forEach(({ unsubscribe }) => unsubscribe());
         return value;
-    }
+    };
 
-    function dispose() {
+    const dispose = () => {
         dependencies.forEach((d) => d.unsubscribe());
-    }
+    };
 
     run();
 
     return dispose;
-}
+};

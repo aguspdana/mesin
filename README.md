@@ -102,10 +102,10 @@ Note: The select callback should be cheap because it may be called every time th
 The store value can be updated from anywhere:
 
 ```typescript
-function add_user(id: string, user: User) {
+const add_user = (id: string, user: User) => {
     const all = users.get();
     users.set({ ...users, [id]: user });
-}
+};
 ```
 
 From a computed store:
@@ -283,10 +283,10 @@ Update multiple stores at once.
 If you update multiple stores like this
 
 ```typescript
-function update() {
+const update = () => {
     store_a.set(1);
     store_b.set(1);
-}
+};
 ```
 
 A computed store or an effect that depends on `store_a` and `store_b` directly or indirectly will be recomputed twice.
@@ -294,12 +294,12 @@ A computed store or an effect that depends on `store_a` and `store_b` directly o
 You can use `batch()` to not trigger multiple recomputes to subscribers.
 
 ```typescript
-function update() {
+const update = () => {
     batch(() => {
         store_a.set(1);
         store_b.set(1);
     });
-}
+};
 ```
 
 If you call `get()` after `set()`, you'll get the old value because the update is deferred.

@@ -4,7 +4,7 @@ import type { Param } from "./types";
  * Create a stable string from `Param`.  The returned string may not be parsed
  * with `JSON.parse()`.
  */
-export function stringify(input: Param): string {
+export const stringify = (input: Param): string => {
     if (input === undefined) {
         return "_";
     }
@@ -51,4 +51,4 @@ export function stringify(input: Param): string {
     }
 
     return "";
-}
+};

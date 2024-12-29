@@ -182,22 +182,22 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
     }
 }
 
-export function compute<P extends Param, T extends NotPromise<unknown>>(
+export const compute = <P extends Param, T extends NotPromise<unknown>>(
     cb: (param: P) => T
-) {
+) => {
     const registry = new Map<string, Computed<P, T>>();
 
-    return function (param: P) {
+    return (param: P) => {
         const key = stringify(param);
         const existing_computed = registry.get(key);
         if (existing_computed) {
             return existing_computed;
         }
-        function remove_from_registry() {
+        const remove_from_registry = () => {
             registry.delete(key);
-        }
+        };
         const new_computed = new Computed(param, cb, remove_from_registry);
         registry.set(key, new_computed);
         return new_computed;
     };
-}
+};

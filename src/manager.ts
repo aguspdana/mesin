@@ -92,6 +92,6 @@ export class Manager {
 
 export const MANAGER = new Manager();
 
-export function batch(cb: () => void) {
+export const batch = (cb: () => void) => {
     MANAGER.batch(cb);
-}
+};

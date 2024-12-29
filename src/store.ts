@@ -55,6 +55,6 @@ export class Store<T> {
     }
 }
 
-export function store<T>(value: T) {
+export const store = <T>(value: T) => {
     return new Store(value);
-}
+};

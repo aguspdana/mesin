@@ -30,15 +30,15 @@ const user = query((n: number): Promise<{ name: string; age: number }> => {
     });
 });
 
-function increment() {
+const increment = () => {
     user_id.set(user_id.get() + 1);
-}
+};
 
-function decrement() {
+const decrement = () => {
     user_id.set(user_id.get() - 1);
-}
+};
 
-function User(props: { id: number }) {
+const User = (props: { id: number }) => {
     const { id } = props;
     const _user = useStore(user(id));
     if (_user.status === "error") {
@@ -55,9 +55,9 @@ function User(props: { id: number }) {
             {_user.value.name} is {_user.value.age} years old
         </p>
     );
-}
+};
 
-function App() {
+const App = () => {
     const id = useStore(user_id);
 
     return (
@@ -70,6 +70,6 @@ function App() {
             <User id={id} />
         </div>
     );
-}
+};
 
 export default App;

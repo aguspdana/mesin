@@ -13,27 +13,27 @@ const ac = compute(() => a().get() + c().get());
 const bd = compute(() => b().get() + d().get());
 const abcd = compute(() => ac().get() + bd().get());
 
-function increment_a() {
+const increment_a = () => {
     const current = x.get();
     x.set({ ...current, a: current.a + 1 });
-}
+};
 
-function increment_b() {
+const increment_b = () => {
     const current = x.get();
     x.set({ ...current, b: current.b + 1 });
-}
+};
 
-function increment_c() {
+const increment_c = () => {
     const current = y.get();
     y.set({ ...current, c: current.c + 1 });
-}
+};
 
-function increment_d() {
+const increment_d = () => {
     const current = y.get();
     y.set({ ...current, d: current.d + 1 });
-}
+};
 
-function App() {
+const App = () => {
     const _a = useStore(a());
     const _b = useStore(b());
     const _c = useStore(c());
@@ -51,6 +51,6 @@ function App() {
             <p>abcd = {_abcd}</p>
         </div>
     );
-}
+};
 
 export default App;
