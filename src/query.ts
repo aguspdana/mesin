@@ -30,6 +30,13 @@ export class Query<P extends Param, T> {
     private load_id = 0;
     private should_autoload: boolean;
     private last_update_ts = 0;
+    private visibilityChangeHandler = () => {
+        if (document.hidden) {
+            this.cancel_update?.();
+        } else {
+            this.schedule_update();
+        }
+    };
 
     constructor(props: {
         param: P;
@@ -39,11 +46,26 @@ export class Query<P extends Param, T> {
     }) {
         this.param = props.param;
         this.loader = props.loader;
-        this.remove_from_registry = props.remove_from_registry;
+        this.remove_from_registry = () => {
+            props.remove_from_registry();
+            if (typeof window !== "undefined") {
+                window.removeEventListener(
+                    "visibilityChange",
+                    this.visibilityChangeHandler
+                );
+            }
+        };
         this.options = props.options;
         this.schedule_removal(this.options.remove_after);
         this.should_autoload =
             typeof window !== "undefined" || this.options.autoload_on_server;
+
+        if (typeof window !== "undefined") {
+            window.addEventListener(
+                "visibilityChange",
+                this.visibilityChangeHandler
+            );
+        }
     }
 
     get() {
@@ -103,10 +125,7 @@ export class Query<P extends Param, T> {
 
     private schedule_removal(duration = this.options.remove_after) {
         if (this.cancel_removal === null) {
-            const cancel = schedule(
-                this.remove_from_registry.bind(this),
-                duration
-            );
+            const cancel = schedule(this.remove_from_registry, duration);
             this.cancel_removal = () => {
                 cancel();
                 this.cancel_removal = null;
@@ -118,7 +137,8 @@ export class Query<P extends Param, T> {
         if (
             this.should_autoload &&
             this.subscribers_count !== 0 &&
-            this.cancel_update === null
+            this.cancel_update === null &&
+            (typeof window === "undefined" || !document.hidden)
         ) {
             const dt = Date.now() - this.last_update_ts;
             const duration = Math.max(this.options.update_every - dt, 0);
@@ -144,27 +164,28 @@ export class Query<P extends Param, T> {
         // Invalidate pending fetch.
         this.load_id += 1;
         this.store.set({ status: "finished", value });
+        this.is_loading = false;
         this.last_update_ts = Date.now();
         this.schedule_update();
     }
 }
 
-export function query<P extends Param, T>(
+export const query = <P extends Param, T>(
     loader: (param: P) => Promise<T>,
     options?: Partial<QueryOptions>
-) {
+) => {
     const registry = new Map<string, Query<P, T>>();
 
-    return function (param: P) {
+    return (param: P) => {
         const key = stringify(param);
 
         const existing_query = registry.get(key);
         if (existing_query) {
             return existing_query;
         }
-        function remove_from_registry() {
+        const remove_from_registry = () => {
             registry.delete(key);
-        }
+        };
         const new_query = new Query({
             param,
             loader,
@@ -174,4 +195,4 @@ export function query<P extends Param, T>(
         registry.set(key, new_query);
         return new_query;
     };
-}
+};
