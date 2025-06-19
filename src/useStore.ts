@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Computed } from "./computed";
+import type { Computed } from "./computed";
 import { effect } from "./effect";
-import { Query } from "./query";
-import { Store } from "./store";
+import type { Query } from "./query";
+import type { Store } from "./store";
+import type { StoreWithStorage } from "./storeWithStorage";
 import type { NotPromise, Param, QueryState } from "./types";
 
 export function useStore<T extends NotPromise<unknown>>(
@@ -10,14 +11,12 @@ export function useStore<T extends NotPromise<unknown>>(
 ): QueryState<T>;
 
 export function useStore<T extends NotPromise<unknown>>(
-    store: Store<NotPromise<T>> | Computed<Param, T>
+    store: Store<NotPromise<T>> | Computed<Param, T> | StoreWithStorage<T>
 ): T;
 
-export function useStore<T extends NotPromise<unknown>>(
-    store: Store<T> | Computed<Param, T> | Query<Param, T>
-) {
+export function useStore<T extends NotPromise<unknown>>(store: AnyStore<T>) {
     const [, setCount] = useState(0);
-    const store_ref = useRef<Store<T> | Computed<Param, T> | Query<Param, T>>();
+    const store_ref = useRef<AnyStore<T>>();
     const value_ref = useRef<T | QueryState<T>>();
 
     if (store !== store_ref.current) {
@@ -38,3 +37,9 @@ export function useStore<T extends NotPromise<unknown>>(
 
     return value_ref.current;
 }
+
+type AnyStore<T> =
+    | Store<T>
+    | Computed<Param, T>
+    | Query<Param, T>
+    | StoreWithStorage<T>;
