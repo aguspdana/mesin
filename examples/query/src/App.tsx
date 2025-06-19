@@ -16,7 +16,7 @@ const USERS = [
     },
 ];
 
-const user_id = store(0);
+const userId = store(0);
 
 const user = query((n: number): Promise<{ name: string; age: number }> => {
     return new Promise((resolve, reject) => {
@@ -31,11 +31,11 @@ const user = query((n: number): Promise<{ name: string; age: number }> => {
 });
 
 const increment = () => {
-    user_id.set(user_id.get() + 1);
+    userId.set(userId.get() + 1);
 };
 
 const decrement = () => {
-    user_id.set(user_id.get() - 1);
+    userId.set(userId.get() - 1);
 };
 
 const User = (props: { id: number }) => {
@@ -58,7 +58,7 @@ const User = (props: { id: number }) => {
 };
 
 const App = () => {
-    const id = useStore(user_id);
+    const id = useStore(userId);
 
     return (
         <div className="App">

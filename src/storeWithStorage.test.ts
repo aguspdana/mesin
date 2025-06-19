@@ -44,10 +44,10 @@ test("StoreWithStorage should react to external storage changes via listener", (
     expect(effectFn).toHaveBeenCalledTimes(1);
 
     // Simulate value change from external context (different tab)
-    mockStorage.setFromExternalContext("external_update");
+    mockStorage.setFromExternalContext("externalUpdate");
 
-    expect(effectValue).toBe("external_update");
-    expect(store.get()).toBe("external_update");
+    expect(effectValue).toBe("externalUpdate");
+    expect(store.get()).toBe("externalUpdate");
     expect(effectFn).toHaveBeenCalledTimes(2);
 });
 
@@ -74,11 +74,11 @@ test("StoreWithStorage should not trigger listener when setting value locally", 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
     // Setting value locally should not trigger the external listener
-    store.set("local_update");
+    store.set("localUpdate");
 
-    expect(effectValue).toBe("local_update");
-    expect(store.get()).toBe("local_update");
-    expect(mockStorage.get()).toBe("local_update");
+    expect(effectValue).toBe("localUpdate");
+    expect(store.get()).toBe("localUpdate");
+    expect(mockStorage.get()).toBe("localUpdate");
     expect(effectFn).toHaveBeenCalledTimes(2);
 
     // The listener should have been registered but not called for local updates
@@ -130,7 +130,7 @@ test("StoreWithStorage should notify subscribers count if provided", () => {
     const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
-        notify_subscribers_count: notifyFn,
+        notifySubscribersCount: notifyFn,
     });
 
     // Initially no subscribers

@@ -8,24 +8,24 @@ test("Batch update should trigger the effect __only__ once", () => {
     const x = store(0);
     const y = store(10);
 
-    const x_plus_1_cb = vi.fn(() => x.get() + 1);
-    const x_plus_1 = compute(x_plus_1_cb);
+    const xPlus1Cb = vi.fn(() => x.get() + 1);
+    const xPlus1 = compute(xPlus1Cb);
 
-    const y_plus_1_cb = vi.fn(() => y.get() + 1);
-    const y_plus_1 = compute(y_plus_1_cb);
+    const yPlus1Cb = vi.fn(() => y.get() + 1);
+    const yPlus1 = compute(yPlus1Cb);
 
-    const x_plus_1_plus_y_plus_1 = compute(() => {
-        const x = x_plus_1().get();
-        const y = y_plus_1().get();
+    const xPlus1PlusYPlus1 = compute(() => {
+        const x = xPlus1().get();
+        const y = yPlus1().get();
         return x + y;
     });
 
     let value: number | undefined;
 
-    const effect_cb = vi.fn(() => {
-        value = x_plus_1_plus_y_plus_1().get();
+    const effectCb = vi.fn(() => {
+        value = xPlus1PlusYPlus1().get();
     });
-    effect(effect_cb);
+    effect(effectCb);
     expect(value).toBe(12);
 
     batch(() => {
@@ -36,39 +36,39 @@ test("Batch update should trigger the effect __only__ once", () => {
     });
     expect(value).toBe(14);
 
-    expect(effect_cb).toHaveBeenCalledTimes(2);
-    expect(x_plus_1_cb).toHaveBeenCalledTimes(2);
-    expect(y_plus_1_cb).toHaveBeenCalledTimes(2);
+    expect(effectCb).toHaveBeenCalledTimes(2);
+    expect(xPlus1Cb).toHaveBeenCalledTimes(2);
+    expect(yPlus1Cb).toHaveBeenCalledTimes(2);
 });
 
 test("Writing to the store from the computed store should trigger the effect __only__ once", () => {
     const x = store(0);
     const y = store(10);
 
-    const x_plus_1_cb = vi.fn(() => {
+    const xPlus1Cb = vi.fn(() => {
         const _x = x.get();
         if (_x % 2 != 0) {
             x.set(_x + 1);
         }
         return _x + 1;
     });
-    const x_plus_1 = compute(x_plus_1_cb);
+    const xPlus1 = compute(xPlus1Cb);
 
-    const y_plus_1_cb = vi.fn(() => y.get() + 1);
-    const y_plus_1 = compute(y_plus_1_cb);
+    const yPlus1Cb = vi.fn(() => y.get() + 1);
+    const yPlus1 = compute(yPlus1Cb);
 
     let value: number | undefined;
 
-    const effect_cb = vi.fn(() => {
-        value = x_plus_1().get() + y_plus_1().get();
+    const effectCb = vi.fn(() => {
+        value = xPlus1().get() + yPlus1().get();
     });
-    effect(() => effect_cb());
+    effect(() => effectCb());
     expect(value).toBe(12);
 
     x.set(1);
     expect(value).toBe(14);
 
-    expect(x_plus_1_cb).toHaveBeenCalledTimes(3);
-    expect(y_plus_1_cb).toHaveBeenCalledTimes(1);
-    expect(effect_cb).toHaveBeenCalledTimes(2);
+    expect(xPlus1Cb).toHaveBeenCalledTimes(3);
+    expect(yPlus1Cb).toHaveBeenCalledTimes(1);
+    expect(effectCb).toHaveBeenCalledTimes(2);
 });

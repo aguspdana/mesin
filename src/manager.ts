@@ -4,17 +4,17 @@ import type { ComputeFn, Context, NotPromise, Param, UpdateFn } from "./types";
 export class Manager {
     clock = 0;
     private contexts: Context[] = [];
-    private pending_updates: Map<Store<unknown>, UpdateFn> | null = null;
-    private pending_notifications: (() => void)[] = [];
+    private pendingUpdates: Map<Store<unknown>, UpdateFn> | null = null;
+    private pendingNotifications: (() => void)[] = [];
 
     batch(cb: () => void) {
-        const parent_batch_exists = !!this.pending_updates;
-        if (!parent_batch_exists) {
-            this.pending_updates = new Map();
+        const parentBatchExists = !!this.pendingUpdates;
+        if (!parentBatchExists) {
+            this.pendingUpdates = new Map();
         }
         cb();
-        if (!parent_batch_exists) {
-            this.maybe_run_batch();
+        if (!parentBatchExists) {
+            this.maybeRunBatch();
         }
     }
 
@@ -26,11 +26,11 @@ export class Manager {
         this.contexts.push(context as Context);
         const value = compute(param);
         this.contexts.pop();
-        this.maybe_run_batch();
+        this.maybeRunBatch();
         return value;
     }
 
-    get_context() {
+    getContext() {
         if (this.contexts.length > 0) {
             return this.contexts[this.contexts.length - 1];
         }
@@ -40,9 +40,9 @@ export class Manager {
     /**
      * Call `notify()` after the current context is finished or immediately if there is no context.
      */
-    notify_next(notify: () => void) {
+    notifyNext(notify: () => void) {
         if (this.contexts.length !== 0) {
-            this.pending_notifications.push(notify);
+            this.pendingNotifications.push(notify);
         } else {
             notify();
         }
@@ -51,38 +51,38 @@ export class Manager {
     /**
      * Run batch update if there is no context.
      */
-    private maybe_run_batch() {
-        if (!this.pending_updates || this.contexts.length !== 0) {
+    private maybeRunBatch() {
+        if (!this.pendingUpdates || this.contexts.length !== 0) {
             return;
         }
-        if (this.pending_updates.size === 0) {
-            this.pending_updates = null;
+        if (this.pendingUpdates.size === 0) {
+            this.pendingUpdates = null;
             return;
         }
         this.clock += 1;
-        const batch = Array.from(this.pending_updates.values());
-        this.pending_updates = null;
+        const batch = Array.from(this.pendingUpdates.values());
+        this.pendingUpdates = null;
         batch.map((update) => update()).forEach((notify) => notify());
     }
 
-    send_pending_notifications() {
+    sendPendingNotifications() {
         if (this.contexts.length !== 0) {
             return;
         }
-        while (this.pending_notifications.length !== 0) {
-            this.pending_notifications.pop()?.();
+        while (this.pendingNotifications.length !== 0) {
+            this.pendingNotifications.pop()?.();
         }
     }
 
     /**
      * Update the store after the current cycle is completed.
      */
-    update_next(store: Store<unknown>, update: UpdateFn) {
-        if (this.pending_updates) {
-            this.pending_updates.set(store, update);
+    updateNext(store: Store<unknown>, update: UpdateFn) {
+        if (this.pendingUpdates) {
+            this.pendingUpdates.set(store, update);
         } else if (this.contexts.length !== 0) {
-            this.pending_updates = new Map();
-            this.pending_updates.set(store, update);
+            this.pendingUpdates = new Map();
+            this.pendingUpdates.set(store, update);
         } else {
             this.clock += 1;
             update()();

@@ -16,7 +16,7 @@ export type ComputeFn<P extends Param, V extends NotPromise<unknown>> = (
 ) => V;
 
 export interface Context {
-    add_dependency: (dependency: Dependency) => void;
+    addDependency: (dependency: Dependency) => void;
     notify: () => void;
 }
 
@@ -56,16 +56,16 @@ export interface QueryOptions {
      * Update the store every `n` milliseconds when there"s a subscriber.
      * Default 300_000.
      */
-    update_every: number;
+    updateEvery: number;
     /**
      * Delete the query from the cache after there"s no subscriber for `n` milliseconds.
      * When it"s used again it will be in "pending" state. Default 300_000.
      */
-    remove_after: number;
+    removeAfter: number;
     /**
      * Execute the loader function on the server automatically.
      * If it's `false`, the loader function would never be executed unless called manually.
      * Default `false`.
      */
-    autoload_on_server: boolean;
+    autoloadOnServer: boolean;
 }

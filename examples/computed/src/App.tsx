@@ -13,22 +13,22 @@ const ac = compute(() => a().get() + c().get());
 const bd = compute(() => b().get() + d().get());
 const abcd = compute(() => ac().get() + bd().get());
 
-const increment_a = () => {
+const incrementA = () => {
     const current = x.get();
     x.set({ ...current, a: current.a + 1 });
 };
 
-const increment_b = () => {
+const incrementB = () => {
     const current = x.get();
     x.set({ ...current, b: current.b + 1 });
 };
 
-const increment_c = () => {
+const incrementC = () => {
     const current = y.get();
     y.set({ ...current, c: current.c + 1 });
 };
 
-const increment_d = () => {
+const incrementD = () => {
     const current = y.get();
     y.set({ ...current, d: current.d + 1 });
 };
@@ -43,10 +43,10 @@ const App = () => {
     return (
         <div className="App">
             <div className="actions">
-                <button onClick={increment_a}>a = {_a}</button>
-                <button onClick={increment_b}>b = {_b}</button>
-                <button onClick={increment_c}>c = {_c}</button>
-                <button onClick={increment_d}>d = {_d}</button>
+                <button onClick={incrementA}>a = {_a}</button>
+                <button onClick={incrementB}>b = {_b}</button>
+                <button onClick={incrementC}>c = {_c}</button>
+                <button onClick={incrementD}>d = {_d}</button>
             </div>
             <p>abcd = {_abcd}</p>
         </div>

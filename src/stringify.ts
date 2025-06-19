@@ -40,10 +40,10 @@ export const stringify = (input: Param): string => {
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
             const value = input[key];
-            const stable_key = stringify(key);
-            const stable_value = stringify(value);
+            const stableKey = stringify(key);
+            const stableValue = stringify(value);
             if (value !== undefined) {
-                props.push(`${stable_key}:${stable_value}`);
+                props.push(`${stableKey}:${stableValue}`);
             }
         }
 

@@ -16,26 +16,26 @@ export function useStore<T extends NotPromise<unknown>>(
 
 export function useStore<T extends NotPromise<unknown>>(store: AnyStore<T>) {
     const [, setCount] = useState(0);
-    const store_ref = useRef<AnyStore<T>>();
-    const value_ref = useRef<T | QueryState<T>>();
+    const storeRef = useRef<AnyStore<T>>();
+    const valueRef = useRef<T | QueryState<T>>();
 
-    if (store !== store_ref.current) {
-        store_ref.current = store;
-        value_ref.current = store.get();
+    if (store !== storeRef.current) {
+        storeRef.current = store;
+        valueRef.current = store.get();
     }
 
     useEffect(() => {
         const dispose = effect(() => {
             const value = store.get();
-            if (value_ref.current !== value) {
+            if (valueRef.current !== value) {
                 setCount((c) => c + 1);
-                value_ref.current = value;
+                valueRef.current = value;
             }
         });
         return dispose;
     }, [store]);
 
-    return value_ref.current;
+    return valueRef.current;
 }
 
 type AnyStore<T> =

@@ -34,28 +34,28 @@ const users = store({
 });
 
 const user = compute((id: string) => {
-    users.select((all_users) => all_users[id]);
+    users.select((allUsers) => allUsers[id]);
 });
 
-const user_friends = compute((id: string) => {
-    const current_user = user(id).get();
-    const friends = current_user?.friends?.map((friend_id) => {
-        user(friend_id).get();
+const userFriends = compute((id: string) => {
+    const currentUser = user(id).get();
+    const friends = currentUser?.friends?.map((friendId) => {
+        user(friendId).get();
     });
     return friends;
 });
 
 const User = ({ id }: { id: string }) => {
-    const current_user = useStore(user(id));
-    const friends = useStore(user_friends(id));
+    const currentUser = useStore(user(id));
+    const friends = useStore(userFriends(id));
 
-    if (!current_user) {
+    if (!currentUser) {
         return null;
     }
 
     return (
         <div>
-            <h2>{current_user.name}</h2>
+            <h2>{currentUser.name}</h2>
             <h3>Friends</h3>
             <ul>
                 {friends?.map((friend) => (
@@ -75,7 +75,7 @@ A writable primitive store.
 const users = store({
     "user-1": {
         name: "Foo",
-        date_of_birth: 2000,
+        dateOfBirth: 2000,
     },
     ...
 });
@@ -84,7 +84,7 @@ const users = store({
 Get all users:
 
 ```typescript
-const all_users = computed((id: string) => {
+const allUsers = computed((id: string) => {
     return users.get();
 });
 ```
@@ -102,7 +102,7 @@ Note: The select callback should be cheap because it may be called every time th
 The store value can be updated from anywhere:
 
 ```typescript
-const add_user = (id: string, user: User) => {
+const addUser = (id: string, user: User) => {
     const all = users.get();
     users.set({ ...users, [id]: user });
 };
@@ -112,15 +112,15 @@ From a computed store:
 
 ```typescript
 const user = computed((id: string) => {
-    const current_user = users.select((all) => all[id]);
-    if (current_user.date_of_birth >= 2000) {
+    const currentUser = users.select((all) => all[id]);
+    if (currentUser.dateOfBirth >= 2000) {
         // Delete user
-        const new_users = { ...users.get() };
-        delete new_users[id];
-        users.set(new_users);
+        const newUsers = { ...users.get() };
+        delete newUsers[id];
+        users.set(newUsers);
         return;
     }
-    return current_user;
+    return currentUser;
 });
 ```
 
@@ -128,16 +128,16 @@ From an effect:
 
 ```typescript
 effect(() => {
-    const new_users = { ...users.get() };
+    const newUsers = { ...users.get() };
     let changed = false;
-    Object.entries(new_users).forEach((id, user) => {
+    Object.entries(newUsers).forEach((id, user) => {
         if (user.score < 0) {
             delete all[id];
             changed = true;
         }
     });
     if (changed) {
-        users.set(new_users);
+        users.set(newUsers);
     }
 });
 ```
@@ -149,9 +149,9 @@ If a store is set multiple times in a the same write cycle, only the last set is
 ```typescript
 const count = store(0);
 effect(() => {
-    const current_count = count.get();
-    count.set(current_count + 1); // Ignored
-    count.set(current_count + 2);
+    const currentCount = count.get();
+    count.set(currentCount + 1); // Ignored
+    count.set(currentCount + 2);
 });
 ```
 
@@ -159,15 +159,15 @@ Note: Setting a store value inside a reactive block is discouraged. If the same 
 
 ## `compute<P extends Param, T>(cb: (param: P) => T)`
 
-A reactive store that is computed from primitive stores or other computed stores. The dependencies are tracked automatically. The callback must be synchronous. Calling `my_store.get()` or `my_store.select()` outside the synchronous block won't add the store as a dependency. A computed store also has `get()` method to get the entire value and `select()` method to get a subset of the value.
+A reactive store that is computed from primitive stores or other computed stores. The dependencies are tracked automatically. The callback must be synchronous. Calling `myStore.get()` or `myStore.select()` outside the synchronous block won't add the store as a dependency. A computed store also has `get()` method to get the entire value and `select()` method to get a subset of the value.
 
 ```typescript
-const user_age = compute((id: string) => {
-    const date_of_birth = user(id).select((u) => u.date_of_birth);
-    if (date_of_birth === undefined) {
+const userAge = compute((id: string) => {
+    const dateOfBirth = user(id).select((u) => u.dateOfBirth);
+    if (dateOfBirth === undefined) {
         return;
     }
-    new Date.getFullYear() - date_of_birth;
+    new Date.getFullYear() - dateOfBirth;
 });
 ```
 
@@ -193,28 +193,28 @@ A function that is called every time its current dependencies change.
 ```typescript
 effect(() => {
     // This function is called every time users and orders change.
-    const all_users = users.get();
-    const all_orders = orders.get();
-    console.log("users", all_users);
-    console.log("orders", all_orders);
+    const allUsers = users.get();
+    const allOrders = orders.get();
+    console.log("users", allUsers);
+    console.log("orders", allOrders);
 });
 ```
 
 `effect` can be used to sync a store with an external store, e.g local storage.
 
 ```typescript
-const stored_settings = localStorage.getItem("settings");
-const init_settings = stored_settings
-    ? JSON.parse(stored_settings)
+const storedSettings = localStorage.getItem("settings");
+const initSettings = storedSettings
+    ? JSON.parse(storedSettings)
     : DEFAULT_SETTINGS;
-const settings = store(init_settings);
-let last_value_from_storage = init_settings;
+const settings = store(initSettings);
+let lastValueFromStorage = initSettings;
 
 addEventListener("storage", (e) => {
     if (e.key === "settings" && e.newValue) {
         try {
-            const new_value = JSON.parse(e.newValue);
-            settings.set(new_value);
+            const newValue = JSON.parse(e.newValue);
+            settings.set(newValue);
         } catch {
             const current = settings.get();
             localStorage.setItem("settings", JSON.stringify(current));
@@ -224,7 +224,7 @@ addEventListener("storage", (e) => {
 
 effect(() => {
     const current = settings.get();
-    if (current !== last_value_from_storage) {
+    if (current !== lastValueFromStorage) {
         localStorage.setItem("settings", JSON.stringify(current));
     }
 });
@@ -260,7 +260,7 @@ export interface QueryFinished<T> {
 export type QueryState<T> = QueryPending | QueryError | QueryFinished<T>;
 ```
 
-A query is updated every `opts.update_every` milliseconds when it has at least one subscriber. It's destroyed (removed from the cache) after it has no subscriber for `opts.destroy_after` milliseconds. If you use a query that has been destroyed, it will start from a "pending" state again.
+A query is updated every `opts.updateEvery` milliseconds when it has at least one subscriber. It's destroyed (removed from the cache) after it has no subscriber for `opts.destroyAfter` milliseconds. If you use a query that has been destroyed, it will start from a "pending" state again.
 
 A query value can be set manually:
 
@@ -284,20 +284,20 @@ If you update multiple stores like this
 
 ```typescript
 const update = () => {
-    store_a.set(1);
-    store_b.set(1);
+    storeA.set(1);
+    storeB.set(1);
 };
 ```
 
-A computed store or an effect that depends on `store_a` and `store_b` directly or indirectly will be recomputed twice.
+A computed store or an effect that depends on `storeA` and `storeB` directly or indirectly will be recomputed twice.
 
 You can use `batch()` to not trigger multiple recomputes to subscribers.
 
 ```typescript
 const update = () => {
     batch(() => {
-        store_a.set(1);
-        store_b.set(1);
+        storeA.set(1);
+        storeB.set(1);
     });
 };
 ```
@@ -306,9 +306,9 @@ If you call `get()` after `set()`, you'll get the old value because the update i
 
 ```typescript
 batch(() => {
-    const a = store_a.get(); // 1
-    store_a.set(a + 1);
-    store_a.get(); // Still 1
+    const a = storeA.get(); // 1
+    storeA.set(a + 1);
+    storeA.get(); // Still 1
 });
 ```
 
@@ -369,6 +369,6 @@ filteredPosts.get();
 
 ### Signal vs getter function
 
-Mesin automatically detects subscriptions using signal. So getting a store value from outside of the reactive block, e.g. in a `setTimout` callback, won’t add that store as a dependency for that computed store or effect.
+Mesin automatically detects subscriptions using signal. So getting a store value from outside of the reactive block, e.g. in a `setTimeout` callback, won’t add that store as a dependency for that computed store or effect.
 
 Jotai uses a getter function to get the value and subscribe to an atom. We can pass it to a `setTimeout` callback or an async function and it will add the atom that is called with as a dependency even after the computed atom has resolved.

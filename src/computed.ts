@@ -31,27 +31,27 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
     } | null = null;
     private dependencies: Dependency[] = [];
     private subscribers = new Map<symbol, Subscriber<T, unknown>>();
-    private remove_from_registry: () => void;
-    private cancel_removal: (() => void) | null = null;
-    private is_computing = false;
+    private removeFromRegistry: () => void;
+    private cancelRemoval: (() => void) | null = null;
+    private isComputing = false;
 
     constructor(
         param: P,
         compute: ComputeFn<P, T>,
-        remove_from_registry: () => void
+        removeFromRegistry: () => void
     ) {
         this.param = param;
         this.computeFn = compute;
-        this.remove_from_registry = remove_from_registry;
+        this.removeFromRegistry = removeFromRegistry;
     }
 
     private compute() {
-        const prev_dependencies = this.dependencies;
+        const prevDependencies = this.dependencies;
         this.dependencies = [];
 
-        this.is_computing = true;
+        this.isComputing = true;
 
-        const add_dependency = (dependency: Dependency) => {
+        const addDependency = (dependency: Dependency) => {
             this.dependencies.push(dependency);
         };
 
@@ -69,13 +69,13 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         };
 
         const value = MANAGER.compute(this.param, this.computeFn, {
-            add_dependency,
+            addDependency,
             notify,
         });
 
-        this.is_computing = false;
+        this.isComputing = false;
 
-        prev_dependencies.forEach(({ unsubscribe }) => unsubscribe());
+        prevDependencies.forEach(({ unsubscribe }) => unsubscribe());
 
         this.cache = {
             value,
@@ -83,12 +83,12 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         };
 
         // Send notification to dependencies's subscribers.
-        MANAGER.send_pending_notifications();
+        MANAGER.sendPendingNotifications();
 
         Array.from(this.subscribers.values()).forEach((s) => {
             const selected = s.selector(value);
             if (s.value !== selected) {
-                MANAGER.notify_next(s.notify);
+                MANAGER.notifyNext(s.notify);
             }
         });
 
@@ -99,7 +99,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         return this.select((v) => v);
     }
 
-    private get_cache_or_compute() {
+    private getCacheOrCompute() {
         if (!this.cache) {
             return this.compute();
         } else if (this.cache.clock === MANAGER.clock) {
@@ -111,50 +111,50 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         return this.compute();
     }
 
-    private schedule_removal() {
-        this.cancel_removal?.();
+    private scheduleRemoval() {
+        this.cancelRemoval?.();
 
         if (this.subscribers.size !== 0) {
-            this.cancel_removal = null;
+            this.cancelRemoval = null;
             return;
         }
 
-        const cancel_removal = schedule(() => {
-            this.cancel_removal = null;
+        const cancelRemoval = schedule(() => {
+            this.cancelRemoval = null;
             if (this.subscribers.size !== 0) {
                 return;
             }
             this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
             this.dependencies = [];
             this.cache = null;
-            this.remove_from_registry();
+            this.removeFromRegistry();
         }, REMOVE_FROM_REGISTRY_AFTER);
 
-        this.cancel_removal = () => {
-            cancel_removal();
-            this.cancel_removal = null;
+        this.cancelRemoval = () => {
+            cancelRemoval();
+            this.cancelRemoval = null;
         };
     }
 
     select<V>(selector: Selector<T, V>): V {
-        if (this.is_computing) {
+        if (this.isComputing) {
             throw new CircularDependencyError("Circular dependency detected");
         }
-        const { value } = this.get_cache_or_compute();
+        const { value } = this.getCacheOrCompute();
         const selected = selector(value);
-        this.add_context_as_subscriber(selected, selector);
-        this.schedule_removal();
+        this.addContextAsSubscriber(selected, selector);
+        this.scheduleRemoval();
         return selected;
     }
 
     /**
      * Add the context as a subscriber and add the current computed store as a dependency of the context.
      */
-    private add_context_as_subscriber<V>(value: V, selector: Selector<T, V>) {
-        const context = MANAGER.get_context();
+    private addContextAsSubscriber<V>(value: V, selector: Selector<T, V>) {
+        const context = MANAGER.getContext();
 
         if (context) {
-            const { add_dependency, notify } = context;
+            const { addDependency, notify } = context;
             const key = Symbol();
             const subscriber = { value, notify, selector };
 
@@ -167,15 +167,15 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
                     this.dependencies = [];
                     this.cache = null;
                 }
-                this.schedule_removal();
+                this.scheduleRemoval();
             };
 
             const changed = (): boolean => {
-                const { value } = this.get_cache_or_compute();
+                const { value } = this.getCacheOrCompute();
                 return subscriber.value !== selector(value);
             };
 
-            add_dependency({ unsubscribe, changed });
+            addDependency({ unsubscribe, changed });
 
             this.subscribers.set(key, subscriber);
         }
@@ -189,15 +189,15 @@ export const compute = <P extends Param, T extends NotPromise<unknown>>(
 
     return (param: P) => {
         const key = stringify(param);
-        const existing_computed = registry.get(key);
-        if (existing_computed) {
-            return existing_computed;
+        const existingComputed = registry.get(key);
+        if (existingComputed) {
+            return existingComputed;
         }
-        const remove_from_registry = () => {
+        const removeFromRegistry = () => {
             registry.delete(key);
         };
-        const new_computed = new Computed(param, cb, remove_from_registry);
-        registry.set(key, new_computed);
-        return new_computed;
+        const newComputed = new Computed(param, cb, removeFromRegistry);
+        registry.set(key, newComputed);
+        return newComputed;
     };
 };

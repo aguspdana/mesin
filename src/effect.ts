@@ -5,7 +5,7 @@ export const effect = (cb: () => void) => {
     let dependencies: Dependency[] = [];
     let clock = -1;
 
-    const add_dependency = (dependency: Dependency) => {
+    const addDependency = (dependency: Dependency) => {
         dependencies.push(dependency);
     };
 
@@ -14,13 +14,13 @@ export const effect = (cb: () => void) => {
             return;
         }
         clock = MANAGER.clock;
-        const prev_dependencies = dependencies;
+        const prevDependencies = dependencies;
         dependencies = [];
         const value = MANAGER.compute(undefined, cb, {
-            add_dependency,
+            addDependency,
             notify: run,
         });
-        prev_dependencies.forEach(({ unsubscribe }) => unsubscribe());
+        prevDependencies.forEach(({ unsubscribe }) => unsubscribe());
         return value;
     };
 
