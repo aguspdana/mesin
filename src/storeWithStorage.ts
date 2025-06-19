@@ -31,3 +31,12 @@ export class StoreWithStorage<T> {
         this.setToStorage(value);
     }
 }
+
+export const storeWithStorage = <T>(params: {
+    get: () => T;
+    set: (value: T) => void;
+    listen?: (set: (value: T) => void) => void;
+    notify_subscribers_count?: (count: number) => void;
+}) => {
+    return new StoreWithStorage(params);
+};

@@ -1,10 +1,10 @@
 import { expect, test, vi } from "vitest";
-import { StoreWithStorage } from "./storeWithStorage";
+import { storeWithStorage } from "./storeWithStorage";
 import { effect } from "./effect";
 
 test("StoreWithStorage should initialize with storage value", () => {
     const mockStorage = new MockStorage("initial");
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
     });
@@ -14,7 +14,7 @@ test("StoreWithStorage should initialize with storage value", () => {
 
 test("StoreWithStorage should update storage when setting value", () => {
     const mockStorage = new MockStorage("initial");
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
     });
@@ -27,7 +27,7 @@ test("StoreWithStorage should update storage when setting value", () => {
 
 test("StoreWithStorage should react to external storage changes via listener", () => {
     const mockStorage = new MockStorage("initial");
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
         listen: (callback: (value: string) => void) =>
@@ -55,7 +55,7 @@ test("StoreWithStorage should not trigger listener when setting value locally", 
     const mockStorage = new MockStorage("initial");
     const listenerFn = vi.fn();
 
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
         listen: (callback: (value: string) => void) => {
@@ -87,7 +87,7 @@ test("StoreWithStorage should not trigger listener when setting value locally", 
 
 test("StoreWithStorage selector should work correctly", () => {
     const mockStorage = new MockStorage({ count: 5, name: "test" });
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: { count: number; name: string }) => mockStorage.set(value),
     });
@@ -99,7 +99,7 @@ test("StoreWithStorage selector should work correctly", () => {
 
 test("StoreWithStorage should handle multiple external updates", () => {
     const mockStorage = new MockStorage(0);
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: number) => mockStorage.set(value),
         listen: (callback: (value: number) => void) =>
@@ -127,7 +127,7 @@ test("StoreWithStorage should notify subscribers count if provided", () => {
     const mockStorage = new MockStorage("test");
     const notifyFn = vi.fn();
 
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
         notify_subscribers_count: notifyFn,
@@ -161,7 +161,7 @@ test("StoreWithStorage should handle complex object updates", () => {
     const initialUser: User = { id: 1, name: "John", active: true };
     const mockStorage = new MockStorage(initialUser);
 
-    const store = new StoreWithStorage({
+    const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: User) => mockStorage.set(value),
         listen: (callback: (value: User) => void) =>
