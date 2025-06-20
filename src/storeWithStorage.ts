@@ -10,11 +10,11 @@ export class StoreWithStorage<T> {
         get: () => T;
         set: (value: T) => void;
         listen?: (set: (value: T) => void) => void;
-        notifySubscribersCount?: (count: number) => void;
+        onSubscriptionChange?: (count: number) => void;
     }) {
-        const { get, set, listen, notifySubscribersCount } = params;
+        const { get, set, listen, onSubscriptionChange } = params;
         this.setToStorage = set;
-        this.store = new Store(get(), notifySubscribersCount);
+        this.store = new Store(get(), onSubscriptionChange);
         listen?.((value: T) => this.store.set(value));
     }
 
@@ -36,7 +36,7 @@ export const storeWithStorage = <T>(params: {
     get: () => T;
     set: (value: T) => void;
     listen?: (set: (value: T) => void) => void;
-    notifySubscribersCount?: (count: number) => void;
+    onSubscriptionChange?: (count: number) => void;
 }) => {
     return new StoreWithStorage(params);
 };

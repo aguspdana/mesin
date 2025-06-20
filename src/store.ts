@@ -4,11 +4,11 @@ import type { Selector, Subscriber } from "./types";
 export class Store<T> {
     private value: T;
     private subscribers = new Map<symbol, Subscriber<T, unknown>>();
-    private notifySubscribersCount?: (count: number) => void;
+    private onSubscriptionChange?: (count: number) => void;
 
-    constructor(value: T, notifySubscribersCount?: (count: number) => void) {
+    constructor(value: T, onSubscriptionChange?: (count: number) => void) {
         this.value = value;
-        this.notifySubscribersCount = notifySubscribersCount;
+        this.onSubscriptionChange = onSubscriptionChange;
     }
 
     get(): T {
@@ -24,13 +24,13 @@ export class Store<T> {
             const subscriber = { value, notify, selector };
             const unsubscribe = () => {
                 this.subscribers.delete(key);
-                this.notifySubscribersCount?.(this.subscribers.size);
+                this.onSubscriptionChange?.(this.subscribers.size);
             };
             const changed = () =>
                 subscriber.selector(this.value) !== subscriber.value;
             addDependency({ unsubscribe, changed });
             this.subscribers.set(key, subscriber);
-            this.notifySubscribersCount?.(this.subscribers.size);
+            this.onSubscriptionChange?.(this.subscribers.size);
         }
         return value;
     }

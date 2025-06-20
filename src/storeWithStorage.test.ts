@@ -130,7 +130,7 @@ test("StoreWithStorage should notify subscribers count if provided", () => {
     const store = storeWithStorage({
         get: () => mockStorage.get(),
         set: (value: string) => mockStorage.set(value),
-        notifySubscribersCount: notifyFn,
+        onSubscriptionChange: notifyFn,
     });
 
     // Initially no subscribers
