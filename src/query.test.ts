@@ -248,7 +248,7 @@ test("Should reset and load immediately when there is a subscriber", async () =>
         }
     );
 
-    let state: QueryState<number>;
+    let state: QueryState<number> | undefined;
 
     const destroy = effect(() => {
         state = count().get();
