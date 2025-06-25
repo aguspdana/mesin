@@ -3,7 +3,7 @@ import type { Computed } from "./computed";
 import { effect } from "./effect";
 import type { Query } from "./query";
 import type { Store } from "./store";
-import type { StoreWithStorage } from "./storeWithStorage";
+import type { StoreInStorage } from "./storeInStorage";
 import type { NotPromise, Param, QueryState } from "./types";
 
 export function useStore<T extends NotPromise<unknown>>(
@@ -11,7 +11,7 @@ export function useStore<T extends NotPromise<unknown>>(
 ): QueryState<T>;
 
 export function useStore<T extends NotPromise<unknown>>(
-    store: Store<NotPromise<T>> | Computed<Param, T> | StoreWithStorage<T>
+    store: Store<NotPromise<T>> | Computed<Param, T> | StoreInStorage<T>
 ): T;
 
 export function useStore<T extends NotPromise<unknown>>(store: AnyStore<T>) {
@@ -42,4 +42,4 @@ type AnyStore<T> =
     | Store<T>
     | Computed<Param, T>
     | Query<Param, T>
-    | StoreWithStorage<T>;
+    | StoreInStorage<T>;

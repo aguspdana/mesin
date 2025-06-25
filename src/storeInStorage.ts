@@ -1,8 +1,7 @@
-// TODO: Do not listen to the storage if the store is not subscribed
 import { Store } from "./store";
 import { Selector } from "./types";
 
-export class StoreWithStorage<T> {
+export class StoreInStorage<T> {
     private store: Store<T>;
     private setToStorage: (value: T) => void;
 
@@ -38,5 +37,5 @@ export const storeWithStorage = <T>(params: {
     listen?: (set: (value: T) => void) => void;
     onSubscriptionChange?: (count: number) => void;
 }) => {
-    return new StoreWithStorage(params);
+    return new StoreInStorage(params);
 };
