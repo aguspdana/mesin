@@ -95,9 +95,7 @@ export const storeInQueryString = <T>(
 
                 queryValue = value;
 
-                if (value === null) {
-                    set(defaultValue);
-                } else {
+                if (value !== null) {
                     try {
                         set(parse(value));
                     } catch {
