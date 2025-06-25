@@ -22,7 +22,7 @@ if (typeof window !== "undefined") {
             ) {
                 const result = original.apply(this, args);
                 const event = new Event(eventName);
-                window.dispatchEvent(event);
+                setTimeout(() => window.dispatchEvent(event), 0);
                 return result;
             };
         }
