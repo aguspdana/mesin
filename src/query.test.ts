@@ -23,9 +23,9 @@ test("Should initialize the value", async () => {
     effect(() => {
         state = count().get();
     });
-    expect(state).toMatchObject({ status: "finished", value: 0 });
+    expect(state).toMatchObject({ status: "finished", data: 0 });
     await sleep(20);
-    expect(state).toMatchObject({ status: "finished", value: 1 });
+    expect(state).toMatchObject({ status: "finished", data: 1 });
 });
 
 test("Query state should be in finished state after the initial fetch resolved", async () => {
@@ -49,7 +49,7 @@ test("Query state should be in finished state after the initial fetch resolved",
     expect(state).toMatchObject({ status: "pending" });
 
     await sleep(10);
-    expect(state).toMatchObject({ status: "finished", value: 1 });
+    expect(state).toMatchObject({ status: "finished", data: 1 });
 
     expect(effectCb).toHaveBeenCalledTimes(2);
 });
@@ -122,7 +122,7 @@ test("Should load when `load()` is called manually despite `autoloadOnServer` is
     expect(state).toMatchObject({ status: "pending" });
     count().load();
     await sleep(10);
-    expect(state).toMatchObject({ status: "finished", value: 1 });
+    expect(state).toMatchObject({ status: "finished", data: 1 });
 });
 
 test("Should update every n milliseconds", async () => {
@@ -147,9 +147,9 @@ test("Should update every n milliseconds", async () => {
     effect(effectCb);
     expect(state).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(state).toMatchObject({ status: "finished", value: 3 });
+    expect(state).toMatchObject({ status: "finished", data: 3 });
     await sleep(30);
-    expect(state).toMatchObject({ status: "finished", value: 5 });
+    expect(state).toMatchObject({ status: "finished", data: 5 });
     expect(effectCb).toHaveBeenCalledTimes(3);
 });
 
@@ -176,9 +176,9 @@ test("Setting the query value should invalidate ongoing fetching and then update
     expect(state).toMatchObject({ status: "pending" });
     await sleep(10);
     count().set(2);
-    expect(state).toMatchObject({ status: "finished", value: 2 });
+    expect(state).toMatchObject({ status: "finished", data: 2 });
     await sleep(50);
-    expect(state).toMatchObject({ status: "finished", value: 5 });
+    expect(state).toMatchObject({ status: "finished", data: 5 });
     expect(effectCb).toHaveBeenCalledTimes(3);
 });
 
@@ -200,13 +200,13 @@ test("The query should be destroyed after not subscribed for `removeAfter` milli
     const destroy = effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(count().get()).toMatchObject({ status: "finished", value: 3 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 3 });
     destroy();
     await sleep(30);
     effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(count().get()).toMatchObject({ status: "finished", value: 5 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 5 });
 });
 
 test("Should not update query when it has no subscriber", async () => {
@@ -227,10 +227,10 @@ test("Should not update query when it has no subscriber", async () => {
     const destroy = effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(count().get()).toMatchObject({ status: "finished", value: 3 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 3 });
     destroy();
     await sleep(30);
-    expect(count().get()).toMatchObject({ status: "finished", value: 3 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 3 });
 });
 
 test("Should reset and load immediately when there is a subscriber", async () => {
@@ -256,11 +256,11 @@ test("Should reset and load immediately when there is a subscriber", async () =>
 
     expect(state).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(state).toMatchObject({ status: "finished", value: 2 });
+    expect(state).toMatchObject({ status: "finished", data: 2 });
     count().reset();
     expect(state).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(state).toMatchObject({ status: "finished", value: 3 });
+    expect(state).toMatchObject({ status: "finished", data: 3 });
     destroy();
 });
 
@@ -282,12 +282,12 @@ test("Should reset and load after there is a new subscriber", async () => {
     const destroy = effect(() => count().get());
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(10);
-    expect(count().get()).toMatchObject({ status: "finished", value: 2 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 2 });
     destroy();
     count().reset();
     expect(count().get()).toMatchObject({ status: "pending" });
     await sleep(30);
     effect(() => count().get());
     await sleep(10);
-    expect(count().get()).toMatchObject({ status: "finished", value: 3 });
+    expect(count().get()).toMatchObject({ status: "finished", data: 3 });
 });

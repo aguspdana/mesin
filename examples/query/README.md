@@ -18,6 +18,6 @@ const User = (props: { id: string }) => {
         return <p>Opps</p>;
     }
 
-    return <p>{userState.value.name}</p>;
+    return <p>{userState.data.name}</p>;
 };
 ```

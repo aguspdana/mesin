@@ -254,7 +254,7 @@ export interface QueryError {
 
 export interface QueryFinished<T> {
     status: "finished";
-    value: T;
+    data: T;
 }
 
 export type QueryState<T> = QueryPending | QueryError | QueryFinished<T>;

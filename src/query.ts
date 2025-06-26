@@ -76,7 +76,7 @@ export class Query<P extends Param, T> {
 
     init(value: T): Query<P, T> {
         if (this.store.get().status === "pending") {
-            this.store.set({ status: "finished", value });
+            this.store.set({ status: "finished", data: value });
             this.lastUpdateTs = Date.now();
         }
         return this;
@@ -94,7 +94,7 @@ export class Query<P extends Param, T> {
             if (this.loadId !== loadId) {
                 return;
             }
-            state = { status: "finished", value };
+            state = { status: "finished", data: value };
         } catch (error) {
             if (this.loadId !== loadId) {
                 return;
@@ -160,7 +160,7 @@ export class Query<P extends Param, T> {
     set(value: T) {
         // Invalidate pending fetch.
         this.loadId += 1;
-        this.store.set({ status: "finished", value });
+        this.store.set({ status: "finished", data: value });
         this.isLoading = false;
         this.lastUpdateTs = Date.now();
         this.scheduleUpdate();

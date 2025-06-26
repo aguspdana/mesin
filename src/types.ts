@@ -37,16 +37,20 @@ export type UpdateFn = () => NotifyFn;
 
 export interface QueryPending {
     status: "pending";
+    data?: undefined;
+    error?: undefined;
 }
 
 export interface QueryError {
     status: "error";
     error: unknown;
+    data?: undefined;
 }
 
 export interface QueryFinished<T> {
     status: "finished";
-    value: T;
+    data: T;
+    error?: undefined;
 }
 
 export type QueryState<T> = QueryPending | QueryError | QueryFinished<T>;

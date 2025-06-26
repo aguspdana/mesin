@@ -52,7 +52,7 @@ const User = (props: { id: number }) => {
     }
     return (
         <p>
-            {_user.value.name} is {_user.value.age} years old
+            {_user.data.name} is {_user.data.age} years old
         </p>
     );
 };
