@@ -6,6 +6,8 @@ test("stringify() should return a stable result", () => {
     expect(stringify(null)).toBe("*");
     expect(stringify('"')).toBe('~"~');
     expect(stringify("~")).toBe("~~~~");
+    expect(stringify("~~")).toBe("~~~~~~");
+    expect(stringify("~a~")).toBe("~~~a~~~");
     expect(stringify({ b: 1, a: 2 })).toBe("{~a~:2,~b~:1}");
     expect(stringify({ b: undefined, a: 2 })).toBe("{~a~:2}");
     expect(stringify({ b: [3, 1, 2], a: 2 })).toBe("{~a~:2,~b~:[3,1,2]}");

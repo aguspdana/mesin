@@ -62,7 +62,10 @@ export class Manager {
         this.clock += 1;
         const batch = Array.from(this.pendingUpdates.values());
         this.pendingUpdates = null;
-        batch.map((update) => update()).forEach((notify) => notify());
+        const notifiers = batch.map((update) => update());
+        for (let i = 0; i < notifiers.length; i++) {
+            notifiers[i]();
+        }
     }
 
     sendPendingNotifications() {

@@ -456,7 +456,9 @@ class LocalStorageMock<T> {
     // This should trigger listeners in the current tab
     setFromExternalContext(value: T): void {
         this.value = value;
-        this.listeners.forEach((listener) => listener(value));
+        for (const listener of this.listeners.values()) {
+            listener(value);
+        }
     }
 
     // Helper method to check how many listeners are currently active
@@ -481,7 +483,9 @@ class URLSearchParamsMock<T> {
     set(value: T): void {
         this.value = value;
         // Always notify listeners, simulating URLSearchParams behavior
-        this.listeners.forEach((listener) => listener(value));
+        for (const listener of this.listeners.values()) {
+            listener(value);
+        }
     }
 
     listen(callback: (value: T) => void): () => void {

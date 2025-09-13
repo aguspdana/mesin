@@ -122,8 +122,8 @@ test("When there is no effect in the dependency chain, and there are multiple up
     d().get();
     a.set(2);
     a.set(3);
-    expect(bCb).toBeCalledTimes(2);
-    expect(cCb).toBeCalledTimes(2);
+    expect(bCb).toBeCalledTimes(2); // TODO: It should be called once
+    expect(cCb).toBeCalledTimes(2); // TODO: It should be called once
     expect(dCb).toBeCalledTimes(1);
 });
 
@@ -178,4 +178,19 @@ test("The computed store that is computed without being subscribed to should be 
     expect(value).toBe(2);
     expect(bCb).toBeCalledTimes(2);
     expect(cCb).toBeCalledTimes(2);
+});
+
+test.skip("TODO: After the computed store is unsubscribed by all subscribers, it should retain the cached value", () => {
+    const a = store(1);
+    const bCb = vi.fn(() => a.get());
+    const b = compute(bCb);
+    const cCb = vi.fn(() => b().get());
+    const c = compute(cCb);
+    const dispose = effect(() => {
+        c().get();
+    });
+    dispose();
+    c().get();
+    expect(bCb).toBeCalledTimes(1);
+    expect(cCb).toBeCalledTimes(1);
 });

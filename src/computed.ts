@@ -8,7 +8,7 @@ import type {
     Selector,
     Subscriber,
 } from "./types";
-import { schedule } from "./utils";
+import { schedule, unsubscribeAll } from "./utils";
 
 /**
  * Remove the computed store from the registry after it has no subscriber for DESTROY_AFTER milliseconds.
@@ -60,7 +60,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
                 return;
             }
             if (this.subscribers.size === 0) {
-                this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+                unsubscribeAll(this.dependencies);
                 this.dependencies = [];
                 this.cache = null;
             } else {
@@ -75,7 +75,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
         this.isComputing = false;
 
-        prevDependencies.forEach(({ unsubscribe }) => unsubscribe());
+        unsubscribeAll(prevDependencies);
 
         this.cache = {
             value,
@@ -85,12 +85,12 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         // Send notification to dependencies's subscribers.
         MANAGER.sendPendingNotifications();
 
-        Array.from(this.subscribers.values()).forEach((s) => {
-            const selected = s.selector(value);
-            if (s.value !== selected) {
-                MANAGER.notifyNext(s.notify);
+        for (const subscriber of this.subscribers.values()) {
+            const selected = subscriber.selector(value);
+            if (subscriber.value !== selected) {
+                MANAGER.notifyNext(subscriber.notify);
             }
-        });
+        }
 
         return this.cache;
     }
@@ -102,9 +102,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
     private getCacheOrCompute() {
         if (!this.cache) {
             return this.compute();
-        } else if (this.cache.clock === MANAGER.clock) {
+        }
+        if (this.cache.clock === MANAGER.clock) {
             return this.cache;
-        } else if (!this.dependencies.some(({ changed }) => changed())) {
+        }
+        if (!this.dependencies.some(({ changed }) => changed())) {
             this.cache.clock = MANAGER.clock;
             return this.cache;
         }
@@ -124,7 +126,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
             if (this.subscribers.size !== 0) {
                 return;
             }
-            this.dependencies.forEach(({ unsubscribe }) => unsubscribe());
+            unsubscribeAll(this.dependencies);
             this.dependencies = [];
             this.cache = null;
             this.removeFromRegistry();
@@ -161,9 +163,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
             const unsubscribe = () => {
                 this.subscribers.delete(key);
                 if (this.subscribers.size === 0) {
-                    this.dependencies.forEach(({ unsubscribe }) =>
-                        unsubscribe()
-                    );
+                    unsubscribeAll(this.dependencies);
                     this.dependencies = [];
                     this.cache = null;
                 }

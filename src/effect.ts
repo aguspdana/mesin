@@ -1,5 +1,6 @@
 import { MANAGER } from "./manager";
 import type { Dependency } from "./types";
+import { unsubscribeAll } from "./utils";
 
 export const effect = (cb: () => void) => {
     let dependencies: Dependency[] = [];
@@ -20,12 +21,12 @@ export const effect = (cb: () => void) => {
             addDependency,
             notify: run,
         });
-        prevDependencies.forEach(({ unsubscribe }) => unsubscribe());
+        unsubscribeAll(prevDependencies);
         return value;
     };
 
     const dispose = () => {
-        dependencies.forEach((d) => d.unsubscribe());
+        unsubscribeAll(dependencies);
     };
 
     run();

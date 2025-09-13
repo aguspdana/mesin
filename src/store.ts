@@ -42,12 +42,12 @@ export class Store<T> {
         const update = () => {
             this.value = value;
             const notify = () => {
-                this.subscribers.forEach((subscriber) => {
+                for (const subscriber of this.subscribers.values()) {
                     const newValue = subscriber.selector(value);
                     if (subscriber.value !== newValue) {
                         subscriber.notify();
                     }
-                });
+                }
             };
             return notify;
         };

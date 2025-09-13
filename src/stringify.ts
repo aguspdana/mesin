@@ -1,5 +1,5 @@
 import type { Param } from "./types";
-
+const tildeRegex = /~/g;
 /**
  * Create a stable string from `Param`.  The returned string may not be parsed
  * with `JSON.parse()`.
@@ -22,15 +22,19 @@ export const stringify = (input: Param): string => {
     }
 
     if (typeof input === "number") {
-        return `${input}`;
+        return String(input);
     }
 
     if (typeof input === "string") {
-        return `~${input.replace("~", "~~")}~`;
+        return `~${input.replace(tildeRegex, "~~")}~`;
     }
 
     if (Array.isArray(input)) {
-        return `[${input.map((i) => stringify(i)).join(",")}]`;
+        const parts = new Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+            parts[i] = stringify(input[i]);
+        }
+        return `[${parts.join(",")}]`;
     }
 
     if (typeof input === "object") {
