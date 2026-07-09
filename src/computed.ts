@@ -81,10 +81,18 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
         unsubscribeAll(prevDependencies);
 
-        this.cache = {
-            value,
-            clock: MANAGER.clock,
-        };
+        // Reuse the cache object rather than allocating a new one per recompute.
+        // `getCacheOrCompute` already mutates `cache.clock` in place, so callers
+        // never retain a cache reference across a recompute.
+        if (this.cache) {
+            this.cache.value = value;
+            this.cache.clock = MANAGER.clock;
+        } else {
+            this.cache = {
+                value,
+                clock: MANAGER.clock,
+            };
+        }
 
         // Send notification to dependencies's subscribers.
         MANAGER.sendPendingNotifications();
