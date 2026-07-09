@@ -1,0 +1,51 @@
+// Scenario 2: Deep dependency chain (propagation cost).
+//
+// source -> d1 -> d2 -> ... -> dN, each adds 1. A subscriber sits on the leaf.
+// Each op updates the source and reads the leaf, so the change has to travel
+// through every level.
+
+import { atom, createStore } from "jotai/vanilla";
+import type { Atom } from "jotai/vanilla";
+import { compute, effect, store } from "mesin";
+import { compare } from "../harness.js";
+import type { Row } from "../harness.js";
+
+const DEPTH = 50;
+
+export const run = (): { title: string; rows: Row[] } => {
+    // --- mesin ---
+    const msrc = store(0);
+    // `Computed` isn't exported, so let inference name the factory type.
+    // Each level is a param-less singleton computed.
+    let mnode = compute(() => msrc.get() + 1);
+    for (let k = 1; k < DEPTH; k++) {
+        const prev = mnode;
+        mnode = compute(() => prev().get() + 1);
+    }
+    const mleaf = mnode;
+    effect(() => mleaf().get());
+    let mi = 0;
+
+    // --- jotai ---
+    const js = createStore();
+    const jsrc = atom(0);
+    let jnode: Atom<number> = atom((get) => get(jsrc) + 1);
+    for (let k = 1; k < DEPTH; k++) {
+        const prev = jnode;
+        jnode = atom((get) => get(prev) + 1);
+    }
+    const jleaf = jnode;
+    js.sub(jleaf, () => {});
+    let ji = 0;
+
+    return compare(`2. Deep chain  (source -> ${DEPTH} derived -> leaf)`, {
+        mesin: () => {
+            msrc.set(++mi);
+            mleaf().get();
+        },
+        jotai: () => {
+            js.set(jsrc, ++ji);
+            js.get(jleaf);
+        },
+    });
+};
