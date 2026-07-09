@@ -2,13 +2,14 @@ import { MANAGER } from "./manager";
 import { stringify } from "./stringify";
 import type {
     ComputeFn,
+    Context,
     Dependency,
     NotPromise,
     Param,
     Selector,
     Subscriber,
 } from "./types";
-import { schedule, unsubscribeAll } from "./utils";
+import { identity, schedule, unsubscribeAll } from "./utils";
 
 /**
  * Remove the computed store from the registry after it has no subscriber for DESTROY_AFTER milliseconds.
@@ -30,10 +31,29 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         clock: number;
     } | null = null;
     private dependencies: Dependency[] = [];
-    private subscribers = new Map<symbol, Subscriber<T, unknown>>();
+    private subscribers = new Set<Subscriber<T, unknown> & Dependency>();
     private removeFromRegistry: () => void;
     private cancelRemoval: (() => void) | null = null;
     private isComputing = false;
+    private addDependency = (dependency: Dependency) => {
+        this.dependencies.push(dependency);
+    };
+    private notify = () => {
+        if (this.cache?.clock === MANAGER.clock) {
+            return;
+        }
+        if (this.subscribers.size === 0) {
+            unsubscribeAll(this.dependencies);
+            this.dependencies = [];
+            this.cache = null;
+        } else {
+            this.compute();
+        }
+    };
+    private context: Context = {
+        addDependency: this.addDependency,
+        notify: this.notify,
+    };
 
     constructor(
         param: P,
@@ -51,27 +71,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
         this.isComputing = true;
 
-        const addDependency = (dependency: Dependency) => {
-            this.dependencies.push(dependency);
-        };
-
-        const notify = () => {
-            if (this.cache?.clock === MANAGER.clock) {
-                return;
-            }
-            if (this.subscribers.size === 0) {
-                unsubscribeAll(this.dependencies);
-                this.dependencies = [];
-                this.cache = null;
-            } else {
-                this.compute();
-            }
-        };
-
-        const value = MANAGER.compute(this.param, this.computeFn, {
-            addDependency,
-            notify,
-        });
+        const value = MANAGER.compute(
+            this.param,
+            this.computeFn,
+            this.context
+        );
 
         this.isComputing = false;
 
@@ -85,7 +89,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         // Send notification to dependencies's subscribers.
         MANAGER.sendPendingNotifications();
 
-        for (const subscriber of this.subscribers.values()) {
+        for (const subscriber of this.subscribers) {
             const selected = subscriber.selector(value);
             if (subscriber.value !== selected) {
                 MANAGER.notifyNext(subscriber.notify);
@@ -96,7 +100,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
     }
 
     get(): T {
-        return this.select((v) => v);
+        return this.select(identity);
     }
 
     private getCacheOrCompute() {
@@ -106,11 +110,17 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         if (this.cache.clock === MANAGER.clock) {
             return this.cache;
         }
-        if (!this.dependencies.some(({ changed }) => changed())) {
-            this.cache.clock = MANAGER.clock;
-            return this.cache;
+        // Indexed loop instead of `.some(({ changed }) => changed())`: avoids a
+        // fresh closure per stale-clock read on the DAG hot path. `changed()`
+        // has side effects (it recomputes the dependency), so the short-circuit
+        // on the first changed dep must be preserved — `return` does that.
+        for (let i = 0; i < this.dependencies.length; i++) {
+            if (this.dependencies[i].changed()) {
+                return this.compute();
+            }
         }
-        return this.compute();
+        this.cache.clock = MANAGER.clock;
+        return this.cache;
     }
 
     private scheduleRemoval() {
@@ -157,27 +167,29 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
         if (context) {
             const { addDependency, notify } = context;
-            const key = Symbol();
-            const subscriber = { value, notify, selector };
 
-            const unsubscribe = () => {
-                this.subscribers.delete(key);
-                if (this.subscribers.size === 0) {
-                    unsubscribeAll(this.dependencies);
-                    this.dependencies = [];
-                    this.cache = null;
-                }
-                this.scheduleRemoval();
+            const subscriber: Subscriber<T, V> & Dependency = {
+                value,
+                notify,
+                selector,
+                changed: (): boolean => {
+                    const { value } = this.getCacheOrCompute();
+                    return subscriber.value !== selector(value);
+                },
+                unsubscribe: () => {
+                    this.subscribers.delete(subscriber);
+                    if (this.subscribers.size === 0) {
+                        unsubscribeAll(this.dependencies);
+                        this.dependencies = [];
+                        this.cache = null;
+                    }
+                    this.scheduleRemoval();
+                },
             };
 
-            const changed = (): boolean => {
-                const { value } = this.getCacheOrCompute();
-                return subscriber.value !== selector(value);
-            };
+            addDependency(subscriber);
 
-            addDependency({ unsubscribe, changed });
-
-            this.subscribers.set(key, subscriber);
+            this.subscribers.add(subscriber);
         }
     }
 }

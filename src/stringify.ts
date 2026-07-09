@@ -1,5 +1,18 @@
 import type { Param } from "./types";
 const tildeRegex = /~/g;
+
+/**
+ * Escape a string into its stable key form. Tildes are the only escape
+ * character, so skip the regex scan entirely when the string has none — the
+ * common case for real-world keys.
+ */
+const stringifyString = (input: string): string => {
+    if (input.indexOf("~") === -1) {
+        return `~${input}~`;
+    }
+    return `~${input.replace(tildeRegex, "~~")}~`;
+};
+
 /**
  * Create a stable string from `Param`.  The returned string may not be parsed
  * with `JSON.parse()`.
@@ -13,45 +26,54 @@ export const stringify = (input: Param): string => {
         return "*";
     }
 
-    if (input === true) {
-        return "T";
-    }
+    // `typeof` is read once: this function runs on every keyed compute/query
+    // lookup, so the primitive branches are ordered by expected frequency.
+    const type = typeof input;
 
-    if (input === false) {
-        return "F";
-    }
-
-    if (typeof input === "number") {
+    if (type === "number") {
         return String(input);
     }
 
-    if (typeof input === "string") {
-        return `~${input.replace(tildeRegex, "~~")}~`;
+    if (type === "string") {
+        return stringifyString(input as string);
+    }
+
+    if (type === "boolean") {
+        return input ? "T" : "F";
     }
 
     if (Array.isArray(input)) {
-        const parts = new Array(input.length);
+        // Concatenate directly instead of building an intermediate array and
+        // joining it — one fewer allocation per array param.
+        let result = "[";
         for (let i = 0; i < input.length; i++) {
-            parts[i] = stringify(input[i]);
+            if (i > 0) {
+                result += ",";
+            }
+            result += stringify(input[i]);
         }
-        return `[${parts.join(",")}]`;
+        return result + "]";
     }
 
-    if (typeof input === "object") {
-        const keys = Object.keys(input).sort();
-        const props: string[] = [];
+    if (type === "object") {
+        const keys = Object.keys(input as object).sort();
+        let result = "{";
+        let first = true;
 
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
-            const value = input[key];
-            const stableKey = stringify(key);
-            const stableValue = stringify(value);
-            if (value !== undefined) {
-                props.push(`${stableKey}:${stableValue}`);
+            const value = (input as { [key: string]: Param })[key];
+            if (value === undefined) {
+                continue;
             }
+            if (!first) {
+                result += ",";
+            }
+            result += `${stringifyString(key)}:${stringify(value)}`;
+            first = false;
         }
 
-        return `{${props.join(",")}}`;
+        return result + "}";
     }
 
     return "";

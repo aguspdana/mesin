@@ -1,9 +1,10 @@
 import { MANAGER } from "./manager";
-import type { Selector, Subscriber } from "./types";
+import type { Dependency, Selector, Subscriber } from "./types";
+import { identity } from "./utils";
 
 export class Store<T> {
     private value: T;
-    private subscribers = new Map<symbol, Subscriber<T, unknown>>();
+    private subscribers = new Set<Subscriber<T, unknown> & Dependency>();
     private onSubscriptionChange?: (count: number) => void;
 
     constructor(value: T, onSubscriptionChange?: (count: number) => void) {
@@ -12,7 +13,7 @@ export class Store<T> {
     }
 
     get(): T {
-        return this.select((v) => v);
+        return this.select(identity);
     }
 
     select<V>(selector: Selector<T, V>): V {
@@ -20,16 +21,19 @@ export class Store<T> {
         const context = MANAGER.getContext();
         if (context) {
             const { addDependency, notify } = context;
-            const key = Symbol();
-            const subscriber = { value, notify, selector };
-            const unsubscribe = () => {
-                this.subscribers.delete(key);
-                this.onSubscriptionChange?.(this.subscribers.size);
+            const subscriber: Subscriber<T, V> & Dependency = {
+                value,
+                notify,
+                selector,
+                changed: () =>
+                    subscriber.selector(this.value) !== subscriber.value,
+                unsubscribe: () => {
+                    this.subscribers.delete(subscriber);
+                    this.onSubscriptionChange?.(this.subscribers.size);
+                },
             };
-            const changed = () =>
-                subscriber.selector(this.value) !== subscriber.value;
-            addDependency({ unsubscribe, changed });
-            this.subscribers.set(key, subscriber);
+            addDependency(subscriber);
+            this.subscribers.add(subscriber);
             this.onSubscriptionChange?.(this.subscribers.size);
         }
         return value;
@@ -42,7 +46,7 @@ export class Store<T> {
         const update = () => {
             this.value = value;
             const notify = () => {
-                for (const subscriber of this.subscribers.values()) {
+                for (const subscriber of this.subscribers) {
                     const newValue = subscriber.selector(value);
                     if (subscriber.value !== newValue) {
                         subscriber.notify();

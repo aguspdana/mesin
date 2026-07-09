@@ -1,5 +1,5 @@
 import { MANAGER } from "./manager";
-import type { Dependency } from "./types";
+import type { Context, Dependency } from "./types";
 import { unsubscribeAll } from "./utils";
 
 export const effect = (cb: () => void) => {
@@ -17,13 +17,15 @@ export const effect = (cb: () => void) => {
         clock = MANAGER.clock;
         const prevDependencies = dependencies;
         dependencies = [];
-        const value = MANAGER.compute(undefined, cb, {
-            addDependency,
-            notify: run,
-        });
+        const value = MANAGER.compute(undefined, cb, context);
         unsubscribeAll(prevDependencies);
         return value;
     };
+
+    // `addDependency` and `run` are stable for the effect's lifetime, so the
+    // context object never needs rebuilding on re-run. Declared after `run`
+    // because it references it.
+    const context: Context = { addDependency, notify: run };
 
     const dispose = () => {
         unsubscribeAll(dependencies);
