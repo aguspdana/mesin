@@ -1,9 +1,10 @@
+import type { Tracker } from "./reactive";
 import { Store } from "./store";
-import type { ComputeFn, Context, NotPromise, Param, UpdateFn } from "./types";
+import type { ComputeFn, NotPromise, Param, UpdateFn } from "./types";
 
 export class Manager {
     clock = 0;
-    private contexts: Context[] = [];
+    private contexts: Tracker[] = [];
     private pendingUpdates: Map<Store<unknown>, UpdateFn> | null = null;
     private pendingNotifications: (() => void)[] = [];
 
@@ -21,9 +22,9 @@ export class Manager {
     compute<P extends Param, T extends NotPromise<unknown>>(
         param: P,
         compute: ComputeFn<P, T>,
-        context: Context
+        context: Tracker
     ): T {
-        this.contexts.push(context as Context);
+        this.contexts.push(context);
         const value = compute(param);
         this.contexts.pop();
         this.maybeRunBatch();

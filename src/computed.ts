@@ -1,15 +1,9 @@
 import { MANAGER } from "./manager";
+import { Subscriber, Tracker } from "./reactive";
+import type { Source } from "./reactive";
 import { stringify } from "./stringify";
-import type {
-    ComputeFn,
-    Context,
-    Dependency,
-    NotPromise,
-    Param,
-    Selector,
-    Subscriber,
-} from "./types";
-import { identity, schedule, unsubscribeAll } from "./utils";
+import type { ComputeFn, NotPromise, Param, Selector } from "./types";
+import { identity, schedule } from "./utils";
 
 /**
  * Remove the computed store from the registry after it has no subscriber for DESTROY_AFTER milliseconds.
@@ -23,36 +17,32 @@ export class CircularDependencyError extends Error {
     }
 }
 
-export class Computed<P extends Param, T extends NotPromise<unknown>> {
+export class Computed<P extends Param, T extends NotPromise<unknown>>
+    implements Source
+{
     private param: P;
     private computeFn: ComputeFn<P, T>;
     private cache: {
         value: T;
         clock: number;
     } | null = null;
-    private dependencies: Dependency[] = [];
-    private subscribers = new Set<Subscriber<T, unknown> & Dependency>();
+    // Its own dependencies (what this computed reads), reused across recomputes.
+    private tracker: Tracker;
+    // Its dependents (who reads this computed).
+    private subscribers = new Set<Subscriber>();
     private removeFromRegistry: () => void;
     private cancelRemoval: (() => void) | null = null;
     private isComputing = false;
-    private addDependency = (dependency: Dependency) => {
-        this.dependencies.push(dependency);
-    };
     private notify = () => {
         if (this.cache?.clock === MANAGER.clock) {
             return;
         }
         if (this.subscribers.size === 0) {
-            unsubscribeAll(this.dependencies);
-            this.dependencies = [];
+            this.tracker.disposeAll();
             this.cache = null;
         } else {
             this.compute();
         }
-    };
-    private context: Context = {
-        addDependency: this.addDependency,
-        notify: this.notify,
     };
 
     constructor(
@@ -63,23 +53,23 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         this.param = param;
         this.computeFn = compute;
         this.removeFromRegistry = removeFromRegistry;
+        this.tracker = new Tracker(this.notify);
     }
 
     private compute() {
-        const prevDependencies = this.dependencies;
-        this.dependencies = [];
+        this.tracker.begin();
 
         this.isComputing = true;
 
         const value = MANAGER.compute(
             this.param,
             this.computeFn,
-            this.context
+            this.tracker
         );
 
         this.isComputing = false;
 
-        unsubscribeAll(prevDependencies);
+        this.tracker.end();
 
         // Reuse the cache object rather than allocating a new one per recompute.
         // `getCacheOrCompute` already mutates `cache.clock` in place, so callers
@@ -118,14 +108,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         if (this.cache.clock === MANAGER.clock) {
             return this.cache;
         }
-        // Indexed loop instead of `.some(({ changed }) => changed())`: avoids a
-        // fresh closure per stale-clock read on the DAG hot path. `changed()`
-        // has side effects (it recomputes the dependency), so the short-circuit
-        // on the first changed dep must be preserved — `return` does that.
-        for (let i = 0; i < this.dependencies.length; i++) {
-            if (this.dependencies[i].changed()) {
-                return this.compute();
-            }
+        // `someChanged()` recomputes stale dependencies as a side effect and
+        // short-circuits on the first changed one, so a recompute is triggered
+        // only when a dependency's value actually differs.
+        if (this.tracker.someChanged()) {
+            return this.compute();
         }
         this.cache.clock = MANAGER.clock;
         return this.cache;
@@ -144,8 +131,7 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
             if (this.subscribers.size !== 0) {
                 return;
             }
-            unsubscribeAll(this.dependencies);
-            this.dependencies = [];
+            this.tracker.disposeAll();
             this.cache = null;
             this.removeFromRegistry();
         }, REMOVE_FROM_REGISTRY_AFTER);
@@ -162,43 +148,31 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
         }
         const { value } = this.getCacheOrCompute();
         const selected = selector(value);
-        this.addContextAsSubscriber(selected, selector);
+        const context = MANAGER.getContext();
+        if (context) {
+            context.track(this, selector, selected);
+        }
         this.scheduleRemoval();
         return selected;
     }
 
-    /**
-     * Add the context as a subscriber and add the current computed store as a dependency of the context.
-     */
-    private addContextAsSubscriber<V>(value: V, selector: Selector<T, V>) {
-        const context = MANAGER.getContext();
+    // --- Source ---
 
-        if (context) {
-            const { addDependency, notify } = context;
+    readForChanged(): unknown {
+        return this.getCacheOrCompute().value;
+    }
 
-            const subscriber: Subscriber<T, V> & Dependency = {
-                value,
-                notify,
-                selector,
-                changed: (): boolean => {
-                    const { value } = this.getCacheOrCompute();
-                    return subscriber.value !== selector(value);
-                },
-                unsubscribe: () => {
-                    this.subscribers.delete(subscriber);
-                    if (this.subscribers.size === 0) {
-                        unsubscribeAll(this.dependencies);
-                        this.dependencies = [];
-                        this.cache = null;
-                    }
-                    this.scheduleRemoval();
-                },
-            };
+    addSubscriber(subscriber: Subscriber): void {
+        this.subscribers.add(subscriber);
+    }
 
-            addDependency(subscriber);
-
-            this.subscribers.add(subscriber);
+    removeSubscriber(subscriber: Subscriber): void {
+        this.subscribers.delete(subscriber);
+        if (this.subscribers.size === 0) {
+            this.tracker.disposeAll();
+            this.cache = null;
         }
+        this.scheduleRemoval();
     }
 }
 

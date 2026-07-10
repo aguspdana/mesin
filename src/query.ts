@@ -105,6 +105,11 @@ export class Query<P extends Param, T> {
         this.isLoading = false;
         this.lastUpdateTs = Date.now();
         this.store.set(state);
+        // Re-arm the next poll explicitly. Previously this happened as a side
+        // effect of subscribers re-subscribing on every update; now that stable
+        // subscriptions are reused (no churn), the query schedules its own next
+        // update instead of relying on that.
+        this.scheduleUpdate();
     }
 
     reset() {

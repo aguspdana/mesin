@@ -1,10 +1,11 @@
 import { MANAGER } from "./manager";
-import type { Dependency, Selector, Subscriber } from "./types";
+import type { Source, Subscriber } from "./reactive";
+import type { Selector } from "./types";
 import { identity } from "./utils";
 
-export class Store<T> {
+export class Store<T> implements Source {
     private value: T;
-    private subscribers = new Set<Subscriber<T, unknown> & Dependency>();
+    private subscribers = new Set<Subscriber>();
     private onSubscriptionChange?: (count: number) => void;
 
     constructor(value: T, onSubscriptionChange?: (count: number) => void) {
@@ -20,23 +21,25 @@ export class Store<T> {
         const value = selector(this.value);
         const context = MANAGER.getContext();
         if (context) {
-            const { addDependency, notify } = context;
-            const subscriber: Subscriber<T, V> & Dependency = {
-                value,
-                notify,
-                selector,
-                changed: () =>
-                    subscriber.selector(this.value) !== subscriber.value,
-                unsubscribe: () => {
-                    this.subscribers.delete(subscriber);
-                    this.onSubscriptionChange?.(this.subscribers.size);
-                },
-            };
-            addDependency(subscriber);
-            this.subscribers.add(subscriber);
-            this.onSubscriptionChange?.(this.subscribers.size);
+            context.track(this, selector, value);
         }
         return value;
+    }
+
+    // --- Source ---
+
+    readForChanged(): unknown {
+        return this.value;
+    }
+
+    addSubscriber(subscriber: Subscriber): void {
+        this.subscribers.add(subscriber);
+        this.onSubscriptionChange?.(this.subscribers.size);
+    }
+
+    removeSubscriber(subscriber: Subscriber): void {
+        this.subscribers.delete(subscriber);
+        this.onSubscriptionChange?.(this.subscribers.size);
     }
 
     set(value: T) {
