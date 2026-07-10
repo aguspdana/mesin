@@ -88,7 +88,10 @@ export class Computed<P extends Param, T extends NotPromise<unknown>>
         MANAGER.sendPendingNotifications();
 
         for (const subscriber of this.subscribers) {
-            const selected = subscriber.selector(value);
+            const selected =
+                subscriber.selector === identity
+                    ? value
+                    : subscriber.selector(value);
             if (subscriber.value !== selected) {
                 MANAGER.notifyNext(subscriber.notify);
             }

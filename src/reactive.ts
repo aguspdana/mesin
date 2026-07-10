@@ -11,6 +11,8 @@
 // reads its one predecessor), the existing subscribers are reused in place, so
 // there is zero allocation and zero Set churn for a stable dependency graph.
 
+import { identity } from "./utils";
+
 /**
  * A reactive value that can be depended on: a Store or a Computed. `readForChanged`
  * returns the current value used to test whether a dependent must recompute.
@@ -45,7 +47,12 @@ export class Subscriber {
     }
 
     changed(): boolean {
-        return this.selector(this.source.readForChanged()) !== this.value;
+        const current = this.source.readForChanged();
+        // Whole-value reads (`.get()`) all share the singleton `identity`
+        // selector; skip the call and compare the raw value directly.
+        const selected =
+            this.selector === identity ? current : this.selector(current);
+        return selected !== this.value;
     }
 
     unsubscribe(): void {

@@ -50,7 +50,10 @@ export class Store<T> implements Source {
             this.value = value;
             const notify = () => {
                 for (const subscriber of this.subscribers) {
-                    const newValue = subscriber.selector(value);
+                    const newValue =
+                        subscriber.selector === identity
+                            ? value
+                            : subscriber.selector(value);
                     if (subscriber.value !== newValue) {
                         subscriber.notify();
                     }
