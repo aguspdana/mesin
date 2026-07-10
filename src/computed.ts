@@ -207,17 +207,39 @@ export const compute = <P extends Param, T extends NotPromise<unknown>>(
 ) => {
     const registry = new Map<string, Computed<P, T>>();
 
+    // One-entry memo of the last resolution. Repeated access with the same param
+    // *identity* — param-less singletons (`node()`), constant params (`node(7)`) —
+    // is the hot path (a chain or grid re-reads the same node thousands of times
+    // per recompute), and it lets us skip `stringify` + the `Map` lookup entirely.
+    // Object params are fresh references each call, so they never hit this and
+    // correctly fall through to content-based keying below.
+    let lastParam: P;
+    let lastComputed: Computed<P, T> | null = null;
+
     return (param: P) => {
+        if (lastComputed !== null && param === lastParam) {
+            return lastComputed;
+        }
         const key = stringify(param);
         const existingComputed = registry.get(key);
         if (existingComputed) {
+            lastParam = param;
+            lastComputed = existingComputed;
             return existingComputed;
         }
+        let newComputed: Computed<P, T>;
         const removeFromRegistry = () => {
             registry.delete(key);
+            // Drop the memo if it points at the node being auto-removed, so the
+            // next access re-creates it instead of handing back a dead node.
+            if (lastComputed === newComputed) {
+                lastComputed = null;
+            }
         };
-        const newComputed = new Computed(param, cb, removeFromRegistry);
+        newComputed = new Computed(param, cb, removeFromRegistry);
         registry.set(key, newComputed);
+        lastParam = param;
+        lastComputed = newComputed;
         return newComputed;
     };
 };
