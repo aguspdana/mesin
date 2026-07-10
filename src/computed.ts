@@ -122,10 +122,11 @@ export class Computed<P extends Param, T extends NotPromise<unknown>>
     }
 
     private scheduleRemoval() {
-        this.cancelRemoval?.();
-
-        if (this.subscribers.size !== 0) {
-            this.cancelRemoval = null;
+        // Only arm once; never cancel + reschedule on every read. Removal is
+        // (un)armed by subscriber-count transitions (add/removeSubscriber) plus
+        // the rare subscriber-less top-level read — not the read hot path, which
+        // previously paid a cancel + fresh setTimeout on every single select().
+        if (this.cancelRemoval !== null || this.subscribers.size !== 0) {
             return;
         }
 
@@ -154,8 +155,12 @@ export class Computed<P extends Param, T extends NotPromise<unknown>>
         const context = MANAGER.getContext();
         if (context) {
             context.track(this, selector, selected);
+        } else if (this.subscribers.size === 0) {
+            // A read with no tracking context and no subscriber: make sure this
+            // transient node is eventually collected. (When a context reads it,
+            // the resulting subscriber keeps it alive instead.)
+            this.scheduleRemoval();
         }
-        this.scheduleRemoval();
         return selected;
     }
 
@@ -166,6 +171,8 @@ export class Computed<P extends Param, T extends NotPromise<unknown>>
     }
 
     addSubscriber(subscriber: Subscriber): void {
+        // A live subscriber keeps the node alive: cancel any pending removal.
+        this.cancelRemoval?.();
         this.subscribers.add(subscriber);
     }
 
