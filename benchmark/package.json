@@ -2,7 +2,7 @@
     "name": "mesin-benchmark",
     "version": "0.0.0",
     "private": true,
-    "description": "Benchmarks comparing mesin against Jotai (vanilla cores, no React).",
+    "description": "Benchmarks comparing mesin against Jotai and Preact Signals (vanilla cores, no React).",
     "type": "module",
     "scripts": {
         "bench": "node --import tsx ./run.ts"
@@ -11,8 +11,7 @@
         "@preact/signals-core": "^1.14.4",
         "jotai": "^2.10.0",
         "jotai-family": "^1.0.2",
-        "mesin": "file:..",
-        "zustand": "^5.0.14"
+        "mesin": "file:.."
     },
     "devDependencies": {
         "tsx": "^4.19.0",

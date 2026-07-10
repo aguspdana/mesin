@@ -1,12 +1,12 @@
 # mesin — reactive core benchmarks
 
-Small, honest benchmarks putting **mesin** next to three popular reactive state
-libraries: **Jotai**, **Preact Signals**, and **Zustand**.
+Small, honest benchmarks putting **mesin** next to two popular reactive state
+libraries: **Jotai** and **Preact Signals**.
 
 Everything is tested through the **vanilla, React-free cores** — mesin's
-`store`/`compute`/`effect`, Jotai's `createStore` + `atom` + `atomFamily`,
-Preact's `signal`/`computed`/`effect`, and Zustand's `createStore`
-(+ `subscribeWithSelector`). So the numbers show the reactive engines, not React.
+`store`/`compute`/`effect`, Jotai's `createStore` + `atom` + `atomFamily`, and
+Preact's `signal`/`computed`/`effect`. So the numbers show the reactive engines,
+not React.
 
 These benchmarks are not a mesin victory lap — several of them mesin loses. The
 point is to see honestly where a signal graph like mesin's is fast, where it
@@ -45,21 +45,19 @@ Each scenario maps to a claim mesin makes about itself.
 Representative medians from several runs (Node 22, x64). **Absolute numbers will
 differ on your machine, and even between runs — the harness prints a `min..max`
 spread next to each median so you can see how noisy a number is. Compare orders
-of magnitude, not single winners.** Higher ops/s is better. `—` = the library
-isn't in that scenario (see notes).
+of magnitude, not single winners.** Higher ops/s is better.
 
-| # | Scenario | mesin | jotai | preact | zustand | Fastest |
-|---|----------|-------|-------|--------|---------|---------|
-| 1 | Write & propagate | ~2.6M | ~305k | ~10.5M | ~12.5M † | **zustand / preact** |
-| 2 | Deep chain (50) | ~93k | ~8.7k | ~690k | — | **preact** (~7x over mesin) |
-| 3 | Shared (100) | ~53k | ~51k | ~315k | — | **preact** (~6x over mesin) |
-| 4 | Object params | ~2.0M | ~4.4M `+eq` / ~3.7M str-key / ~225k default | ~17M ‡ | — | **preact** |
-| 5 | Selector | **~15M** `.select` / ~1.3M whole | ~310k `selectAtom` | ~8.5M | ~11.8M `subWithSelector` | **mesin** |
-| 6 | Cleanup | frees all 5,000 | retains all 5,000 | retains all 5,000 | — | **mesin** (only auto-GC) |
-| 7 | Spreadsheet (2,500 cells, 50 deep) | ~410 grid / ~378 formula | ~199 grid | ~10.7k grid | — | **preact** (~26x over mesin) |
+| # | Scenario | mesin | jotai | preact | Fastest |
+|---|----------|-------|-------|--------|---------|
+| 1 | Write & propagate | ~2.6M | ~305k | ~10.5M | **preact** (~4x over mesin) |
+| 2 | Deep chain (50) | ~93k | ~8.7k | ~690k | **preact** (~7x over mesin) |
+| 3 | Shared (100) | ~53k | ~51k | ~315k | **preact** (~6x over mesin) |
+| 4 | Object params | ~2.0M | ~4.4M `+eq` / ~3.7M str-key / ~225k default | ~17M † | **preact** |
+| 5 | Selector | **~15M** `.select` / ~1.3M whole | ~310k `selectAtom` | ~8.5M | **mesin** |
+| 6 | Cleanup | frees all 5,000 | retains all 5,000 | retains all 5,000 | **mesin** (only auto-GC) |
+| 7 | Spreadsheet (2,500 cells, 50 deep) | ~410 grid / ~378 formula | ~199 grid | ~10.7k grid | **preact** (~26x over mesin) |
 
-† Zustand has no computed node — its "derived" is recomputed on read (see notes),
-so this isn't the same work as the others. ‡ Very noisy (`min..max` spans ~5–21M).
+† Very noisy (`min..max` spans ~5–21M).
 
 ### How to read it
 
@@ -70,13 +68,7 @@ so this isn't the same work as the others. ‡ Very noisy (`min..max` spans ~5�
   faster, not less work). If raw core throughput is all you care about, Preact
   wins this suite. mesin's serialization tax (a `stringify`+`Map` lookup per
   param-less node access — ~2,600 per op in the spreadsheet) is a big part of why.
-- **Zustand is fastest at scenario 1, but it's a different shape of work.** It has
-  no computed graph: the "derived" value is just a function of state recomputed on
-  every read (`getState().n + 1`), with no cached node to maintain. That's why
-  it's cheap here and why it's absent from scenarios 2/3/4/7 — a chain of cached
-  derivations isn't something Zustand models. Fair to show its speed; unfair to
-  read it as "Zustand computes derived graphs faster."
-- **3 — compute-once holds for the graph libraries.** mesin, jotai's `atomFamily`,
+- **3 — compute-once holds for every library here.** mesin, jotai's `atomFamily`,
   and preact all compute the shared value exactly once per update (verified). The
   naive jotai "atom generator" (a fresh atom per consumer) recomputes per consumer
   and is ~15x slower — a beginner mistake, not something a jotai user would write.
@@ -88,13 +80,13 @@ so this isn't the same work as the others. ‡ Very noisy (`min..max` spans ~5�
   advantage isn't speed here (Preact and jotai+eq are faster) — it's that
   value-keying + bounded memory come for free, with nothing to remember.
 - **5 — mesin's fine-grained `.select` is the fastest, and this is its real win.**
-  Every subscriber (coarse and fine, all four libraries) runs the **same**
+  Every subscriber (coarse and fine, all three libraries) runs the **same**
   non-trivial payload, so the point of fine-grained selection — *skipping* that
   payload when the watched field didn't change — is measured evenly. mesin checks
-  the slice inline in `store.set` with no wrapper node (~15M). Zustand's
-  `subscribeWithSelector` is a strong second (~11.8M). Notably jotai's `selectAtom`
-  (~310k) is *slower than a plain whole-value subscribe* — its per-change derived
-  recompute costs more than the payload it skips.
+  the slice inline in `store.set` with no wrapper node (~15M), ahead of a Preact
+  `computed` (~8.5M). Notably jotai's `selectAtom` (~310k) is *slower than a plain
+  whole-value subscribe* — its per-change derived recompute costs more than the
+  payload it skips.
 - **6 — mesin is the only one that frees automatically.** After every subscriber
   leaves, re-reading the mesin nodes **recomputes** them (freed ~1s after the last
   subscriber). Jotai's `atomFamily` and a Preact computed cache both **retain** the
@@ -124,20 +116,14 @@ the engine fast enough and where are its costs," not "which library wins."
   [harness.ts](harness.ts).
 - **Isolation:** each scenario runs in its own process, so leaks/timers/JIT state
   from one scenario don't skew the next.
-- **Fairness:** same work per op on both sides. Where a scenario keeps a value live
+- **Fairness:** same work per op on every side. Where a scenario keeps a value live
   it does so with a real subscriber on every library (mesin `effect`, jotai
-  `store.sub`, preact `effect`, zustand `subscribe`); where a subscriber runs a
-  payload (scenario 5) every library's coarse and fine subscribers run the
-  *identical* payload, so the "skip" is measured evenly. Scenario 7's four grids
-  are cross-checked for identical outputs and provably recompute the same cone.
-- **Library-specific notes:**
-  - **Preact** has no family primitive, so scenarios 4 and 6 hand-roll a
-    string-keyed cache of computeds — the same serialize-then-`Map` strategy mesin
-    uses internally.
-  - **Zustand** has no computed graph, so it appears only in scenario 1 (as
-    "derive on read") and scenario 5 (`subscribeWithSelector`, its real
-    fine-grained tool). Putting it in the chain/shared/spreadsheet scenarios would
-    mean inventing a computed layer it doesn't have.
+  `store.sub`, preact `effect`); where a subscriber runs a payload (scenario 5)
+  every library's coarse and fine subscribers run the *identical* payload, so the
+  "skip" is measured evenly. Scenario 7's grids are cross-checked for identical
+  outputs and provably recompute the same cone.
+- **Preact has no family primitive**, so scenarios 4 and 6 hand-roll a string-keyed
+  cache of computeds — the same serialize-then-`Map` strategy mesin uses internally.
 - **Bounded leaks:** scenario 4's default `atomFamily` leaks by design, so its
   iteration count is capped to keep the run from growing without bound.
 - **Not measured:** React render behavior, async `query` / async atoms, bundle
