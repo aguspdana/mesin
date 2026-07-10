@@ -6,9 +6,11 @@
 
 import { atom, createStore } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
-import { compare } from "../harness.js";
+import { compare, sink } from "../harness.js";
 import type { Row } from "../harness.js";
 
+// The trailing read is sunk (see harness `sink`) so it can't be eliminated. The
+// reads have side effects so DCE is unlikely, but sinking makes it robust.
 export const run = (): { title: string; rows: Row[] } => {
     // --- mesin ---
     const ms = store(0);
@@ -26,11 +28,11 @@ export const run = (): { title: string; rows: Row[] } => {
     return compare("1. Write & propagate  (1 source -> 1 derived)", {
         mesin: () => {
             ms.set(++mi);
-            md().get();
+            sink.value = md().get();
         },
         jotai: () => {
             js.set(ja, ++ji);
-            js.get(jd);
+            sink.value = js.get(jd);
         },
     });
 };

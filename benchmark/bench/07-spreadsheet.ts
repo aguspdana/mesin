@@ -31,6 +31,14 @@ const COLS = 50; // depth of the dependency chain
 const ROWS = 50; // cells per column
 const EDIT_ROW = 0; // which input cell each op edits
 
+// Each formula sums two cells, so values double per column and, 50 deep, blow
+// past 2^53 where float64 loses integer precision. We keep every cell in the
+// safe-integer range with a modulus, so the cross-implementation checksum is
+// EXACT (not "two imprecise sums that happen to round the same way"). All three
+// implementations apply the identical modulus, so the graph and dirty cone are
+// unchanged — this only bounds magnitude.
+const MOD = 1_000_000;
+
 type Reader = () => number;
 
 let mSink = 0;
@@ -44,7 +52,9 @@ export const run = (): { title: string; rows: Row[] } => {
     for (let c = 1; c < COLS; c++) {
         const prev = mGrid[c - 1];
         mGrid[c] = Array.from({ length: ROWS }, (_, r) => {
-            const node = compute(() => prev[r]() + prev[(r + 1) % ROWS]());
+            const node = compute(
+                () => (prev[r]() + prev[(r + 1) % ROWS]()) % MOD
+            );
             return () => node().get();
         });
     }
@@ -62,7 +72,7 @@ export const run = (): { title: string; rows: Row[] } => {
     for (let c = 1; c < COLS; c++) {
         const prev = jGrid[c - 1];
         jGrid[c] = Array.from({ length: ROWS }, (_, r) =>
-            atom((get) => get(prev[r]) + get(prev[(r + 1) % ROWS]))
+            atom((get) => (get(prev[r]) + get(prev[(r + 1) % ROWS])) % MOD)
         );
     }
     const jOut = jGrid[COLS - 1];
@@ -76,7 +86,9 @@ export const run = (): { title: string; rows: Row[] } => {
         if (c === 0) {
             return fInputs[r].get();
         }
-        return cell([c - 1, r]).get() + cell([c - 1, (r + 1) % ROWS]).get();
+        return (
+            (cell([c - 1, r]).get() + cell([c - 1, (r + 1) % ROWS]).get()) % MOD
+        );
     });
     for (let r = 0; r < ROWS; r++) {
         effect(() => cell([COLS - 1, r]).get());

@@ -7,11 +7,12 @@
 import { atom, createStore } from "jotai/vanilla";
 import type { Atom } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
-import { compare } from "../harness.js";
+import { compare, sink } from "../harness.js";
 import type { Row } from "../harness.js";
 
 const DEPTH = 50;
 
+// The trailing leaf read is sunk (see harness `sink`) so it can't be eliminated.
 export const run = (): { title: string; rows: Row[] } => {
     // --- mesin ---
     const msrc = store(0);
@@ -41,11 +42,11 @@ export const run = (): { title: string; rows: Row[] } => {
     return compare(`2. Deep chain  (source -> ${DEPTH} derived -> leaf)`, {
         mesin: () => {
             msrc.set(++mi);
-            mleaf().get();
+            sink.value = mleaf().get();
         },
         jotai: () => {
             js.set(jsrc, ++ji);
-            js.get(jleaf);
+            sink.value = js.get(jleaf);
         },
     });
 };

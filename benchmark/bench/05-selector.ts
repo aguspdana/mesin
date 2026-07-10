@@ -8,13 +8,22 @@
 //   - mesin `.select`   vs  mesin `.get` (whole value)
 //   - jotai `selectAtom` vs jotai plain subscribe
 //
+// Every subscriber runs the SAME non-trivial `work()` payload. This is what makes
+// the comparison fair: the point of fine-grained selection is to SKIP that work
+// on an unrelated change, so the work has to actually cost something. With an
+// empty `() => {}` callback (the earlier version) the fine-grained tools had
+// nothing to amortize against, which flattered mesin and hid that jotai's
+// `selectAtom` here is a net loss — it adds a derived-atom recompute on every
+// change while the callback it "saves" was free. With real work, each tool's
+// skip is measured on equal footing.
+//
 // The immutable `{...obj, b}` copy cost is paid by every variant, so the gap is
 // the notification work each approach avoids (or doesn't).
 
 import { atom, createStore } from "jotai/vanilla";
 import { selectAtom } from "jotai/vanilla/utils";
 import { effect, store } from "mesin";
-import { compare } from "../harness.js";
+import { compare, sink } from "../harness.js";
 import type { Row } from "../harness.js";
 
 interface Big {
@@ -31,29 +40,48 @@ const makeBig = (): Big => {
     return o;
 };
 
+// A non-trivial payload every subscriber runs. Sunk (see harness `sink`) so it
+// can't be eliminated. A fine-grained subscriber skips this on an unrelated `b`
+// change; a coarse one pays it every op.
+const work = (seed: number): number => {
+    let acc = seed;
+    for (let i = 0; i < 100; i++) {
+        acc = (acc + i) % 100_000;
+    }
+    return acc;
+};
+
 export const run = (): { title: string; rows: Row[] } => {
     // --- mesin: subscribe to slice `a` only ---
     const msel = store(makeBig());
     let mSelWork = 0;
     effect(() => {
-        msel.select((v) => v.a);
+        const a = msel.select((v) => v.a);
         mSelWork++; // counts how often the subscriber actually re-runs
+        sink.value = work(a);
     });
 
     // --- mesin: subscribe to the whole value ---
     const mall = store(makeBig());
-    effect(() => mall.get());
+    effect(() => {
+        const v = mall.get();
+        sink.value = work(v.b);
+    });
 
     // --- jotai: selectAtom on slice `a` ---
     const jsStore = createStore();
     const jsBase = atom(makeBig());
     const jsSlice = selectAtom(jsBase, (v) => v.a);
-    jsStore.sub(jsSlice, () => {});
+    jsStore.sub(jsSlice, () => {
+        sink.value = work(jsStore.get(jsSlice));
+    });
 
     // --- jotai: subscribe to the whole atom ---
     const jaStore = createStore();
     const jaBase = atom(makeBig());
-    jaStore.sub(jaBase, () => {});
+    jaStore.sub(jaBase, () => {
+        sink.value = work(jaStore.get(jaBase).b);
+    });
 
     const result = compare("5. Selector  (change unrelated field `b`)", {
         "mesin .select": () => {
