@@ -4,7 +4,10 @@ import type { ComputeFn, NotPromise, Param, UpdateFn } from "./types";
 
 export class Manager {
     clock = 0;
-    private contexts: Tracker[] = [];
+    // The context currently being computed, or null at the top level. A single
+    // save/restore variable instead of a stack: `currentContext !== null` is
+    // exactly "inside some compute", which is all the checks below need.
+    private currentContext: Tracker | null = null;
     private pendingUpdates: Map<Store<unknown>, UpdateFn> | null = null;
     private pendingNotifications: (() => void)[] = [];
 
@@ -24,25 +27,23 @@ export class Manager {
         compute: ComputeFn<P, T>,
         context: Tracker
     ): T {
-        this.contexts.push(context);
+        const previous = this.currentContext;
+        this.currentContext = context;
         const value = compute(param);
-        this.contexts.pop();
+        this.currentContext = previous;
         this.maybeRunBatch();
         return value;
     }
 
     getContext() {
-        if (this.contexts.length > 0) {
-            return this.contexts[this.contexts.length - 1];
-        }
-        return null;
+        return this.currentContext;
     }
 
     /**
      * Call `notify()` after the current context is finished or immediately if there is no context.
      */
     notifyNext(notify: () => void) {
-        if (this.contexts.length !== 0) {
+        if (this.currentContext !== null) {
             this.pendingNotifications.push(notify);
         } else {
             notify();
@@ -53,7 +54,7 @@ export class Manager {
      * Run batch update if there is no context.
      */
     private maybeRunBatch() {
-        if (!this.pendingUpdates || this.contexts.length !== 0) {
+        if (!this.pendingUpdates || this.currentContext !== null) {
             return;
         }
         if (this.pendingUpdates.size === 0) {
@@ -70,7 +71,7 @@ export class Manager {
     }
 
     sendPendingNotifications() {
-        if (this.contexts.length !== 0) {
+        if (this.currentContext !== null) {
             return;
         }
         while (this.pendingNotifications.length !== 0) {
@@ -84,7 +85,7 @@ export class Manager {
     updateNext(store: Store<unknown>, update: UpdateFn) {
         if (this.pendingUpdates) {
             this.pendingUpdates.set(store, update);
-        } else if (this.contexts.length !== 0) {
+        } else if (this.currentContext !== null) {
             this.pendingUpdates = new Map();
             this.pendingUpdates.set(store, update);
         } else {
