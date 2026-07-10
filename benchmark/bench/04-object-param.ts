@@ -25,6 +25,12 @@
 //
 // Bounded iterations (the default family leaks by design).
 
+import {
+    signal,
+    computed,
+    effect as psEffect,
+} from "@preact/signals-core";
+import type { ReadonlySignal } from "@preact/signals-core";
 import { atomFamily } from "jotai-family";
 import { atom, createStore } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
@@ -101,6 +107,23 @@ export const run = (): {
         jeStore.sub(jefam({ id: s.id, kind: s.kind }), () => {});
     }
 
+    // --- preact: no family primitive, so hand-roll a string-keyed cache of
+    // computeds — the same serialize-then-Map strategy mesin uses internally. ---
+    const pbase = signal(10);
+    const pcache = new Map<string, ReadonlySignal<number>>();
+    const pfam = (k: Key): ReadonlySignal<number> => {
+        const key = strKey(k);
+        let c = pcache.get(key);
+        if (!c) {
+            c = computed(() => pbase.value + k.id);
+            pcache.set(key, c);
+        }
+        return c;
+    };
+    for (const s of SHAPES) {
+        psEffect(() => void pfam({ id: s.id, kind: s.kind }).value);
+    }
+
     const result = compare(
         "4. Object params  (fresh object ref each call)",
         {
@@ -115,6 +138,9 @@ export const run = (): {
             },
             "jotai (atomFamily + eq)": () => {
                 jeStore.get(jefam(freshKey()));
+            },
+            "preact (string-key cache)": () => {
+                pfam(freshKey()).value;
             },
         },
         { warmup: 1_000, samples: 5, iters: 20_000 }

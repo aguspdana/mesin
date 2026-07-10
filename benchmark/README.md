@@ -1,10 +1,16 @@
-# mesin vs Jotai — benchmarks
+# mesin — reactive core benchmarks
 
-Small, honest benchmarks comparing **mesin** with **Jotai**.
+Small, honest benchmarks putting **mesin** next to three popular reactive state
+libraries: **Jotai**, **Preact Signals**, and **Zustand**.
 
-Both libraries are tested through their **vanilla, React-free cores** (mesin's
-`store`/`compute`/`effect`, Jotai's `createStore` + `atom` + `atomFamily`). So
-the numbers show the reactive engines, not React.
+Everything is tested through the **vanilla, React-free cores** — mesin's
+`store`/`compute`/`effect`, Jotai's `createStore` + `atom` + `atomFamily`,
+Preact's `signal`/`computed`/`effect`, and Zustand's `createStore`
+(+ `subscribeWithSelector`). So the numbers show the reactive engines, not React.
+
+These benchmarks are not a mesin victory lap — several of them mesin loses. The
+point is to see honestly where a signal graph like mesin's is fast, where it
+isn't, and what its design actually buys you.
 
 ## Run it
 
@@ -18,9 +24,7 @@ Build mesin first (`npm run build` in the repo root) — the benchmark imports t
 shipped `dist`, not the source.
 
 Each scenario runs in its **own child process** (see `run-one.ts`), so one
-scenario can't pollute the next one's heap — scenario 4 leaks jotai atoms on
-purpose, mesin keeps a global manager per process, and unused-node removal timers
-fire ~1s later. Isolation keeps that off whichever scenario runs next.
+scenario can't pollute the next one's heap.
 
 ## What each scenario tests
 
@@ -40,87 +44,100 @@ Each scenario maps to a claim mesin makes about itself.
 
 Representative medians from several runs (Node 22, x64). **Absolute numbers will
 differ on your machine, and even between runs — the harness prints a `min..max`
-spread next to each median so you can see how noisy a number is. Compare medians,
-not single winners.** Higher ops/s is better.
+spread next to each median so you can see how noisy a number is. Compare orders
+of magnitude, not single winners.** Higher ops/s is better. `—` = the library
+isn't in that scenario (see notes).
 
-| # | Scenario | mesin | Jotai | Winner |
-|---|----------|-------|-------|--------|
-| 1 | Write & propagate | **~2.6M ops/s** | ~320k ops/s | mesin ~8x |
-| 2 | Deep chain (50 deep) | **~100k ops/s** | ~9k ops/s | mesin ~11x |
-| 3 | Shared (100 consumers) | ~53k ops/s | ~51k (`atomFamily`) / ~4k (generator) | **near-tie** (within ~10%, flips run to run) / mesin ~14x over generator |
-| 4 | Object params | ~2.0M ops/s | ~4.3M (`+ eq`) / ~4.0M (string key) / ~225k (default) | **Jotai ~2x** (string-key or `+ eq`), no leak; mesin ~9x over default |
-| 5 | Selector (unrelated change) | **~14M ops/s** (`.select`) / ~1.3M (whole) | ~600k (whole) / ~305k (`selectAtom`) | mesin ~45x over `selectAtom` |
-| 6 | Cleanup | frees all 5,000 nodes | retains all 5,000 atoms **and their values** | **mesin auto-GC** (Jotai needs `.remove()`/`setShouldRemove`) |
-| 7 | Spreadsheet (2,500 cells, 50 deep) | **~415 ops/s** (grid) / ~387 (formula) | ~199 ops/s (grid) | mesin ~2.1x |
+| # | Scenario | mesin | jotai | preact | zustand | Fastest |
+|---|----------|-------|-------|--------|---------|---------|
+| 1 | Write & propagate | ~2.6M | ~305k | ~10.5M | ~12.5M † | **zustand / preact** |
+| 2 | Deep chain (50) | ~93k | ~8.7k | ~690k | — | **preact** (~7x over mesin) |
+| 3 | Shared (100) | ~53k | ~51k | ~315k | — | **preact** (~6x over mesin) |
+| 4 | Object params | ~2.0M | ~4.4M `+eq` / ~3.7M str-key / ~225k default | ~17M ‡ | — | **preact** |
+| 5 | Selector | **~15M** `.select` / ~1.3M whole | ~310k `selectAtom` | ~8.5M | ~11.8M `subWithSelector` | **mesin** |
+| 6 | Cleanup | frees all 5,000 | retains all 5,000 | retains all 5,000 | — | **mesin** (only auto-GC) |
+| 7 | Spreadsheet (2,500 cells, 50 deep) | ~410 grid / ~378 formula | ~199 grid | ~10.7k grid | — | **preact** (~26x over mesin) |
+
+† Zustand has no computed node — its "derived" is recomputed on read (see notes),
+so this isn't the same work as the others. ‡ Very noisy (`min..max` spans ~5–21M).
 
 ### How to read it
 
-- **1, 2 — mesin is clearly faster.** Its signal graph is lighter for writes and
-  deep chains. Note mesin also pays a cost jotai doesn't: every param-less node is
-  reached through its factory, which serializes the param (`stringify`) and does a
-  `Map` lookup on *every* access — ~50 such calls per op in scenario 2. It wins
-  anyway, so these margins are if anything conservative.
-- **3 — a near-tie.** 100 consumers want the same derived value. mesin computes it
-  once (one cached node, 100 subscribers); jotai's `atomFamily` also computes it
-  once (the fair rival). Both do the same work — verified: the derived function
-  runs exactly once per update on each. mesin re-runs each effect on every update
-  (which re-subscribes), so it used to lose this one; after recent core work it's a
-  near-tie that flips run to run within ~10%. The naive jotai pattern — a fresh derived atom
-  per consumer (an "atom generator") — recomputes for every consumer and is ~14x
-  slower; it's a beginner mistake, not something a jotai user would write.
-- **4 — mesin caches by value with no leak *by default*, but jotai can match it.**
-  Call a family with a fresh object of the same shape each time. mesin serializes
-  the param to a string key, so it's a cache hit and holds one node per shape (8).
-  Jotai's **default** `atomFamily` keys by reference: every call **misses**, makes
-  a new atom, and **never frees it** — after 100k calls it held **101,000 atoms**.
-  But that's a footgun, not "jotai." Serialize the key yourself and use a
-  **string-keyed `atomFamily`** — the exact trick mesin uses internally — and jotai
-  is O(1), holds 8 atoms (no leak), and is **~2x faster than mesin** here. A custom
-  equality (`+ eq`) also works and is comparably fast, though it linear-scans keys
-  so its edge shrinks as distinct keys grow. So mesin's real win isn't speed or
-  uniqueness: it's that value-keying + bounded memory are the *default*, with
-  nothing to remember.
-- **5 — mesin's fine-grained `.select` is far cheaper.** Every subscriber (coarse
-  and fine, on both libraries) runs the **same** non-trivial payload, so the point
-  of fine-grained selection — *skipping* that payload when the watched field didn't
-  change — is measured on equal footing. mesin's `.select` checks the slice inline
-  in `store.set` and skips the payload, ~14M ops/s. mesin's whole-value subscriber
-  can't skip, ~1.3M. Jotai's `selectAtom` also skips the payload, but it's a
-  separate derived atom that **recomputes its selector on every change** — that
-  fixed overhead costs more than the payload it saves, so here `selectAtom`
-  (~305k) is actually **slower than a plain whole-value subscribe** (~600k). mesin
-  genuinely does less work for the same result.
-- **6 — mesin frees, Jotai retains (both the atom and its value).** After every
-  subscriber leaves, re-reading the mesin nodes **recomputes** them (they were
-  removed ~1s after the last subscriber). Jotai's `atomFamily` still holds every
-  atom **and** its cached value: re-reading is a 0-recompute cache hit and
-  `getParams()` still returns all 5,000. Jotai can evict — `.remove(param)` or the
-  opt-in `setShouldRemove` predicate (lazy, checked on access) — but it doesn't
-  auto-GC on a timer the way mesin does. mesin's automatic cleanup isn't free
-  either: it arms a `setTimeout` per node when the last subscriber leaves.
-- **7 — mesin is ~2x faster on a realistic spreadsheet.** A 50×50 grid of formula
-  cells, 50 levels deep, where editing one input recalculates a growing cone of
-  dependent cells. mesin and jotai recompute the **identical** dirty cone (verified
-  cell-for-cell); mesin recalcs ~2x faster. mesin's **formula-engine** style — one
-  `compute([col, row])` that references itself recursively — is nearly as fast
-  (~1.1x) while replacing the whole 2D atom array with a few lines (it pays a
-  serialize cost per cell read). A correctness check confirms all three produce
-  identical outputs (values are kept in the safe-integer range so the checksum is
-  exact).
+- **Preact Signals is the fastest engine in most scenarios (1, 2, 3, 4, 7).** Its
+  lazy, pull-based signal graph is extremely well optimized — on the deep chain
+  it's ~7x faster than mesin, on the spreadsheet ~26x (verified: both recompute
+  the *identical* 1,274-cell dirty cone per edit, so that gap is real work done
+  faster, not less work). If raw core throughput is all you care about, Preact
+  wins this suite. mesin's serialization tax (a `stringify`+`Map` lookup per
+  param-less node access — ~2,600 per op in the spreadsheet) is a big part of why.
+- **Zustand is fastest at scenario 1, but it's a different shape of work.** It has
+  no computed graph: the "derived" value is just a function of state recomputed on
+  every read (`getState().n + 1`), with no cached node to maintain. That's why
+  it's cheap here and why it's absent from scenarios 2/3/4/7 — a chain of cached
+  derivations isn't something Zustand models. Fair to show its speed; unfair to
+  read it as "Zustand computes derived graphs faster."
+- **3 — compute-once holds for the graph libraries.** mesin, jotai's `atomFamily`,
+  and preact all compute the shared value exactly once per update (verified). The
+  naive jotai "atom generator" (a fresh atom per consumer) recomputes per consumer
+  and is ~15x slower — a beginner mistake, not something a jotai user would write.
+- **4 — value-keyed caching is cheap for everyone who does it; mesin's win is that
+  it's the default.** Preact (hand-rolled string-key cache), jotai (`+eq` or a
+  string-keyed `atomFamily`), and mesin all cache by value and hold 8 nodes. Only
+  jotai's **default** `atomFamily` is the footgun: it keys by object reference, so
+  every fresh object misses and it leaked **101,000 atoms** over the run. mesin's
+  advantage isn't speed here (Preact and jotai+eq are faster) — it's that
+  value-keying + bounded memory come for free, with nothing to remember.
+- **5 — mesin's fine-grained `.select` is the fastest, and this is its real win.**
+  Every subscriber (coarse and fine, all four libraries) runs the **same**
+  non-trivial payload, so the point of fine-grained selection — *skipping* that
+  payload when the watched field didn't change — is measured evenly. mesin checks
+  the slice inline in `store.set` with no wrapper node (~15M). Zustand's
+  `subscribeWithSelector` is a strong second (~11.8M). Notably jotai's `selectAtom`
+  (~310k) is *slower than a plain whole-value subscribe* — its per-change derived
+  recompute costs more than the payload it skips.
+- **6 — mesin is the only one that frees automatically.** After every subscriber
+  leaves, re-reading the mesin nodes **recomputes** them (freed ~1s after the last
+  subscriber). Jotai's `atomFamily` and a Preact computed cache both **retain** the
+  node and its cached value (0 recomputes on re-read, all 5,000 still held) until
+  you evict them yourself (jotai `.remove()`/`setShouldRemove`; Preact: drop the
+  ref). mesin's auto-GC isn't free — it arms a `setTimeout` per node when the last
+  subscriber leaves — but it's the only library here that needs no manual cleanup.
+- **1, 2 — mesin beats jotai but trails preact.** mesin's signal graph is lighter
+  than jotai's atom machinery (~8x on writes, ~11x on the deep chain), but Preact's
+  core is lighter still.
+
+### Where mesin actually stands
+
+mesin is **faster than Jotai across the board**, **slower than Preact Signals** in
+raw engine throughput (often by a lot), and **fastest of all at fine-grained store
+selection** (scenario 5). Its distinguishing features aren't peak ops/s — they're
+**automatic cleanup** (scenario 6, unique here) and **value-keyed families with no
+leak, by default** (scenario 4), plus the ergonomics its README argues for
+(dynamic dependency graphs, one API for sync + async). Treat these numbers as "is
+the engine fast enough and where are its costs," not "which library wins."
 
 ## Method
 
 - **Metric:** median ops/s over several timed rounds, after a warmup, plus the
-  `min..max` of those rounds so you can judge the noise. Median ignores the odd GC
-  pause; the spread shows when a median shouldn't be trusted as a precise number
-  (mesin's allocation-heavy paths are noisier than jotai's). See [harness.ts](harness.ts).
+  `min..max` of those rounds so you can judge the noise (mesin's allocation-heavy
+  paths, and object-param scenarios generally, are noisier than others). See
+  [harness.ts](harness.ts).
 - **Isolation:** each scenario runs in its own process, so leaks/timers/JIT state
   from one scenario don't skew the next.
 - **Fairness:** same work per op on both sides. Where a scenario keeps a value live
-  it does so with a real subscriber on both sides (mesin `effect`, jotai
-  `store.sub`); where a subscriber runs a payload (scenario 5) both libraries' coarse
-  and fine subscribers run the *identical* payload, so the "skip" is measured evenly.
-  Scenario 3's jotai callbacks re-read the value to match mesin's effects re-running.
+  it does so with a real subscriber on every library (mesin `effect`, jotai
+  `store.sub`, preact `effect`, zustand `subscribe`); where a subscriber runs a
+  payload (scenario 5) every library's coarse and fine subscribers run the
+  *identical* payload, so the "skip" is measured evenly. Scenario 7's four grids
+  are cross-checked for identical outputs and provably recompute the same cone.
+- **Library-specific notes:**
+  - **Preact** has no family primitive, so scenarios 4 and 6 hand-roll a
+    string-keyed cache of computeds — the same serialize-then-`Map` strategy mesin
+    uses internally.
+  - **Zustand** has no computed graph, so it appears only in scenario 1 (as
+    "derive on read") and scenario 5 (`subscribeWithSelector`, its real
+    fine-grained tool). Putting it in the chain/shared/spreadsheet scenarios would
+    mean inventing a computed layer it doesn't have.
 - **Bounded leaks:** scenario 4's default `atomFamily` leaks by design, so its
   iteration count is capped to keep the run from growing without bound.
 - **Not measured:** React render behavior, async `query` / async atoms, bundle

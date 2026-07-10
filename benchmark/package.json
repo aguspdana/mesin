@@ -8,9 +8,11 @@
         "bench": "node --import tsx ./run.ts"
     },
     "dependencies": {
+        "@preact/signals-core": "^1.14.4",
         "jotai": "^2.10.0",
         "jotai-family": "^1.0.2",
-        "mesin": "file:.."
+        "mesin": "file:..",
+        "zustand": "^5.0.14"
     },
     "devDependencies": {
         "tsx": "^4.19.0",

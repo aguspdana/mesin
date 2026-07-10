@@ -7,6 +7,8 @@
 //
 //   - mesin `.select`   vs  mesin `.get` (whole value)
 //   - jotai `selectAtom` vs jotai plain subscribe
+//   - preact `computed`  vs preact whole-signal effect
+//   - zustand `subscribeWithSelector` vs zustand plain subscribe
 //
 // Every subscriber runs the SAME non-trivial `work()` payload. This is what makes
 // the comparison fair: the point of fine-grained selection is to SKIP that work
@@ -20,9 +22,12 @@
 // The immutable `{...obj, b}` copy cost is paid by every variant, so the gap is
 // the notification work each approach avoids (or doesn't).
 
+import { signal, computed, effect as psEffect } from "@preact/signals-core";
 import { atom, createStore } from "jotai/vanilla";
 import { selectAtom } from "jotai/vanilla/utils";
 import { effect, store } from "mesin";
+import { createStore as zustand } from "zustand/vanilla";
+import { subscribeWithSelector } from "zustand/middleware";
 import { compare, sink } from "../harness.js";
 import type { Row } from "../harness.js";
 
@@ -83,6 +88,34 @@ export const run = (): { title: string; rows: Row[] } => {
         sink.value = work(jaStore.get(jaBase).b);
     });
 
+    // --- preact: computed on slice `a` (skips when `a` is unchanged) ---
+    const psel = signal(makeBig());
+    const pSlice = computed(() => psel.value.a);
+    psEffect(() => {
+        sink.value = work(pSlice.value);
+    });
+
+    // --- preact: effect on the whole signal (re-runs every op) ---
+    const pall = signal(makeBig());
+    psEffect(() => {
+        sink.value = work(pall.value.b);
+    });
+
+    // --- zustand: subscribeWithSelector on slice `a` (fires only on `a` change) ---
+    const zsel = zustand(subscribeWithSelector<Big>(() => makeBig()));
+    zsel.subscribe(
+        (st) => st.a,
+        (a) => {
+            sink.value = work(a);
+        }
+    );
+
+    // --- zustand: plain subscribe (fires on every change) ---
+    const zall = zustand(() => makeBig());
+    zall.subscribe(() => {
+        sink.value = work(zall.getState().b);
+    });
+
     const result = compare("5. Selector  (change unrelated field `b`)", {
         "mesin .select": () => {
             const cur = msel.get();
@@ -99,6 +132,22 @@ export const run = (): { title: string; rows: Row[] } => {
         "jotai subscribe (whole)": () => {
             const cur = jaStore.get(jaBase);
             jaStore.set(jaBase, { ...cur, b: cur.b + 1 });
+        },
+        "preact computed": () => {
+            const cur = psel.value;
+            psel.value = { ...cur, b: cur.b + 1 };
+        },
+        "preact whole (signal)": () => {
+            const cur = pall.value;
+            pall.value = { ...cur, b: cur.b + 1 };
+        },
+        "zustand subscribeWithSelector": () => {
+            const cur = zsel.getState();
+            zsel.setState({ ...cur, b: cur.b + 1 }, true);
+        },
+        "zustand subscribe (whole)": () => {
+            const cur = zall.getState();
+            zall.setState({ ...cur, b: cur.b + 1 }, true);
         },
     });
 
