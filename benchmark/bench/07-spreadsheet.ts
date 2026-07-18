@@ -21,12 +21,6 @@
 //                      mesin. Same graph, far less code (but pays a serialize
 //                      cost per cell read).
 
-import {
-    signal,
-    computed,
-    effect as psEffect,
-} from "@preact/signals-core";
-import type { ReadonlySignal } from "@preact/signals-core";
 import { atom, createStore } from "jotai/vanilla";
 import type { Atom, PrimitiveAtom } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
@@ -50,7 +44,6 @@ type Reader = () => number;
 let mSink = 0;
 let jSink = 0;
 let fSink = 0;
-let pSink = 0;
 
 export const run = (): { title: string; rows: Row[] } => {
     // --- mesin (grid): a 2D array of compute nodes ---
@@ -102,21 +95,6 @@ export const run = (): { title: string; rows: Row[] } => {
     }
     let fi = 0;
 
-    // --- preact (grid): a 2D array of computed signals ---
-    const pInputs = Array.from({ length: ROWS }, () => signal(0));
-    const pGrid: ReadonlySignal<number>[][] = [pInputs];
-    for (let c = 1; c < COLS; c++) {
-        const prev = pGrid[c - 1];
-        pGrid[c] = Array.from({ length: ROWS }, (_, r) =>
-            computed(
-                () => (prev[r].value + prev[(r + 1) % ROWS].value) % MOD
-            )
-        );
-    }
-    const pOut = pGrid[COLS - 1];
-    pOut.forEach((cellSig) => psEffect(() => void cellSig.value)); // keep outputs live
-    let pi = 0;
-
     const result = compare(
         `7. Spreadsheet recalc  (${COLS}x${ROWS} = ${(COLS * ROWS).toLocaleString()} cells, ${COLS} deep)`,
         {
@@ -144,27 +122,19 @@ export const run = (): { title: string; rows: Row[] } => {
                 }
                 fSink = s;
             },
-            "preact (grid)": () => {
-                pInputs[EDIT_ROW].value = ++pi;
-                let s = 0;
-                for (let r = 0; r < ROWS; r++) {
-                    s += pOut[r].value;
-                }
-                pSink = s;
-            },
         },
         { warmup: 300, samples: 5, iters: 2_000 }
     );
 
-    // Correctness: all four model the same grid, so after the same number of
+    // Correctness: all three model the same grid, so after the same number of
     // edits their outputs must agree.
-    if (mSink !== jSink || mSink !== fSink || mSink !== pSink) {
+    if (mSink !== jSink || mSink !== fSink) {
         console.log(
             `  ! warning: outputs disagree ` +
-                `(mesin ${mSink}, jotai ${jSink}, formula ${fSink}, preact ${pSink})`
+                `(mesin ${mSink}, jotai ${jSink}, formula ${fSink})`
         );
     } else {
-        console.log(`  outputs agree across all four (checksum ${mSink}).`);
+        console.log(`  outputs agree across all three (checksum ${mSink}).`);
     }
 
     return result;

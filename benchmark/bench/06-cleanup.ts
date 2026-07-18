@@ -22,12 +22,6 @@
 //     `.remove(param)` or the opt-in `setShouldRemove` predicate (lazy, checked on
 //     access) — but it does not auto-GC on a timer the way mesin does.
 
-import {
-    signal,
-    computed,
-    effect as psEffect,
-} from "@preact/signals-core";
-import type { ReadonlySignal } from "@preact/signals-core";
 import { atomFamily } from "jotai-family";
 import { atom, createStore } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
@@ -89,41 +83,6 @@ export const run = async (): Promise<{ title: string; lines: string[] }> => {
             `after unsubscribe, re-reading recomputed ${jRebuilt.toLocaleString()}/${N.toLocaleString()} ` +
             `and the family still holds ${retained.toLocaleString()}/${N.toLocaleString()} atoms ` +
             `→ atom + value retained (evict via .remove()/setShouldRemove, not auto-GC).`
-    );
-
-    // --- preact: a hand-rolled computed cache. Preact keeps a computed's cached
-    // value after its last subscriber leaves, and we hold the node in a Map, so
-    // like jotai it retains both until you evict it yourself. ---
-    let pComputes = 0;
-    const pbase = signal(1);
-    const pcache = new Map<number, ReadonlySignal<number>>();
-    const pfam = (p: number): ReadonlySignal<number> => {
-        let c = pcache.get(p);
-        if (!c) {
-            c = computed(() => {
-                pComputes++;
-                return pbase.value + p;
-            });
-            pcache.set(p, c);
-        }
-        return c;
-    };
-    const pdisposers = Array.from({ length: N }, (_, p) =>
-        psEffect(() => void pfam(p).value)
-    );
-    const pWhileSubscribed = pComputes;
-    pdisposers.forEach((d) => d()); // everyone unsubscribes
-    await sleep(1_500);
-    pComputes = 0;
-    for (let p = 0; p < N; p++) {
-        pfam(p).value; // re-read all N
-    }
-    const pRebuilt = pComputes;
-    lines.push(
-        `preact: ${pWhileSubscribed.toLocaleString()} computeds computed while subscribed; ` +
-            `after unsubscribe, re-reading recomputed ${pRebuilt.toLocaleString()}/${N.toLocaleString()} ` +
-            `and the cache still holds ${pcache.size.toLocaleString()}/${N.toLocaleString()} computeds ` +
-            `→ value retained (you dispose the cache yourself; no auto-GC).`
     );
 
     return {

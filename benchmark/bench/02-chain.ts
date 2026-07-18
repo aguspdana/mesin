@@ -4,12 +4,6 @@
 // Each op updates the source and reads the leaf, so the change has to travel
 // through every level.
 
-import {
-    signal,
-    computed,
-    effect as psEffect,
-} from "@preact/signals-core";
-import type { ReadonlySignal } from "@preact/signals-core";
 import { atom, createStore } from "jotai/vanilla";
 import type { Atom } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
@@ -45,17 +39,6 @@ export const run = (): { title: string; rows: Row[] } => {
     js.sub(jleaf, () => {});
     let ji = 0;
 
-    // --- preact signals ---
-    const psrc = signal(0);
-    let pnode: ReadonlySignal<number> = computed(() => psrc.value + 1);
-    for (let k = 1; k < DEPTH; k++) {
-        const prev = pnode;
-        pnode = computed(() => prev.value + 1);
-    }
-    const pleaf = pnode;
-    psEffect(() => void pleaf.value);
-    let pi = 0;
-
     return compare(`2. Deep chain  (source -> ${DEPTH} derived -> leaf)`, {
         mesin: () => {
             msrc.set(++mi);
@@ -64,10 +47,6 @@ export const run = (): { title: string; rows: Row[] } => {
         jotai: () => {
             js.set(jsrc, ++ji);
             sink.value = js.get(jleaf);
-        },
-        preact: () => {
-            psrc.value = ++pi;
-            sink.value = pleaf.value;
         },
     });
 };

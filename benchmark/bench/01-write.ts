@@ -4,7 +4,6 @@
 // a new value to the source and reads the derived result. This is the simplest
 // "state changed, recompute" cycle.
 
-import { signal, computed, effect as psEffect } from "@preact/signals-core";
 import { atom, createStore } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
 import { compare, sink } from "../harness.js";
@@ -26,12 +25,6 @@ export const run = (): { title: string; rows: Row[] } => {
     js.sub(jd, () => {}); // keep the derived live
     let ji = 0;
 
-    // --- preact signals ---
-    const ps = signal(0);
-    const pd = computed(() => ps.value + 1);
-    psEffect(() => void pd.value); // keep the derived live
-    let pi = 0;
-
     return compare("1. Write & propagate  (1 source -> 1 derived)", {
         mesin: () => {
             ms.set(++mi);
@@ -40,10 +33,6 @@ export const run = (): { title: string; rows: Row[] } => {
         jotai: () => {
             js.set(ja, ++ji);
             sink.value = js.get(jd);
-        },
-        preact: () => {
-            ps.value = ++pi;
-            sink.value = pd.value;
         },
     });
 };

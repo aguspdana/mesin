@@ -7,11 +7,9 @@
 //   - jotai atom generator  -> each place makes a FRESH atom, so it recomputes
 //                              M times (the flaw mesin's README calls out).
 //   - jotai atomFamily      -> caches per param, computed once (the fair rival).
-//   - preact computed       -> one computed, M effects, computed once.
 //
 // The derived work is deliberately non-trivial so recompute cost shows up.
 
-import { signal, computed, effect as psEffect } from "@preact/signals-core";
 import { atomFamily } from "jotai-family";
 import { atom, createStore } from "jotai/vanilla";
 import { compute, effect, store } from "mesin";
@@ -59,14 +57,6 @@ export const run = (): { title: string; rows: Row[] } => {
     }
     let fi = 0;
 
-    // --- preact: one computed, many effects, computed once ---
-    const pSrc = signal(0);
-    const pShared = computed(() => heavy(pSrc.value, PARAM));
-    for (let c = 0; c < CONSUMERS; c++) {
-        psEffect(() => void pShared.value);
-    }
-    let pi = 0;
-
     return compare(
         `3. Shared computed  (${CONSUMERS} consumers, 1 source update)`,
         {
@@ -78,9 +68,6 @@ export const run = (): { title: string; rows: Row[] } => {
             },
             "jotai (atomFamily)": () => {
                 jfStore.set(jfSrc, ++fi);
-            },
-            preact: () => {
-                pSrc.value = ++pi;
             },
         },
         { iters: 20_000 }
