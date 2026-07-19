@@ -19,6 +19,12 @@ export const effect = (cb: () => void) => {
         dependencies = [];
         const value = MANAGER.compute(undefined, cb, context);
         unsubscribeAll(prevDependencies);
+        // A computed pull-recomputed inside this effect's context defers
+        // notifications to its *other* subscribers (context was non-empty).
+        // Computed.compute() only flushes when it is the outermost frame, so
+        // when an effect is the outermost frame those notifications would be
+        // stranded. Flush them here now that the context stack is empty again.
+        MANAGER.sendPendingNotifications();
         return value;
     };
 

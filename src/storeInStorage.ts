@@ -31,6 +31,9 @@ export class StoreInStorage<T> {
                 const result = listen?.((value: T) => this.store.set(value));
                 this.stopListening =
                     typeof result === "function" ? result : undefined;
+                // External writes may have landed while there was no listener
+                // attached; re-read the source so we don't serve a stale value.
+                this.store.set(get());
             }
         });
     }

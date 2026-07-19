@@ -101,6 +101,11 @@ export const storeInQueryString = <T>(
                     } catch {
                         // Do nothing
                     }
+                } else {
+                    // The param was removed from the URL (e.g. Back/forward to a
+                    // param-less URL); fall back to the default, matching
+                    // storeInLocalStorage's handling of a deleted key.
+                    set(defaultValue);
                 }
             };
 

@@ -108,14 +108,14 @@ export class Query<P extends Param, T> {
     }
 
     reset() {
+        // Invalidate any in-flight load so its now-stale result can't overwrite
+        // the pending state we're about to set (mirrors `set()`).
+        this.loadId += 1;
+        this.isLoading = false;
         this.store.set({ status: "pending" });
         this.cancelUpdate?.();
         this.lastUpdateTs = 0;
-        if (
-            this.shouldAutoload &&
-            !this.isLoading &&
-            this.subscribersCount > 0
-        ) {
+        if (this.shouldAutoload && this.subscribersCount > 0) {
             this.load();
         }
     }
