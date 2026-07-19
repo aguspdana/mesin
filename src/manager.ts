@@ -24,10 +24,15 @@ export class Manager {
         context: Context
     ): T {
         this.contexts.push(context as Context);
-        const value = compute(param);
-        this.contexts.pop();
-        this.maybeRunBatch();
-        return value;
+        // `finally` guarantees the context stack is restored even if the user
+        // callback throws; otherwise a dead context would be left on the stack,
+        // wedging every later store write (treated as an uncommitted batch).
+        try {
+            return compute(param);
+        } finally {
+            this.contexts.pop();
+            this.maybeRunBatch();
+        }
     }
 
     getContext() {

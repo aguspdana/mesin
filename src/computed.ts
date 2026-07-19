@@ -71,11 +71,20 @@ export class Computed<P extends Param, T extends NotPromise<unknown>> {
 
         this.isComputing = true;
 
-        const value = MANAGER.compute(
-            this.param,
-            this.computeFn,
-            this.context
-        );
+        let value: T;
+        try {
+            value = MANAGER.compute(this.param, this.computeFn, this.context);
+        } catch (error) {
+            // The compute threw (e.g. an uncaught CircularDependencyError).
+            // Restore a consistent, re-computable state: clear the guard, drop
+            // the partial new dependencies, and keep the previous ones. Without
+            // this, `isComputing` stays true and every future read of this
+            // computed throws CircularDependencyError.
+            this.isComputing = false;
+            unsubscribeAll(this.dependencies);
+            this.dependencies = prevDependencies;
+            throw error;
+        }
 
         this.isComputing = false;
 

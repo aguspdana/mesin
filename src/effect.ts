@@ -17,7 +17,16 @@ export const effect = (cb: () => void) => {
         clock = MANAGER.clock;
         const prevDependencies = dependencies;
         dependencies = [];
-        const value = MANAGER.compute(undefined, cb, context);
+        try {
+            MANAGER.compute(undefined, cb, context);
+        } catch (error) {
+            // The callback threw. Roll back to a consistent state so the effect
+            // stays reactive: drop the partial new dependencies and keep the
+            // previous ones.
+            unsubscribeAll(dependencies);
+            dependencies = prevDependencies;
+            throw error;
+        }
         unsubscribeAll(prevDependencies);
         // A computed pull-recomputed inside this effect's context defers
         // notifications to its *other* subscribers (context was non-empty).
@@ -25,7 +34,6 @@ export const effect = (cb: () => void) => {
         // when an effect is the outermost frame those notifications would be
         // stranded. Flush them here now that the context stack is empty again.
         MANAGER.sendPendingNotifications();
-        return value;
     };
 
     // `addDependency` and `run` are stable for the effect's lifetime, so the
